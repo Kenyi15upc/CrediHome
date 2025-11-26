@@ -1,0 +1,4 @@
+﻿/* Estilos personalizados para la barra de navegación si son necesarios */
+.dropdown-menu .dropdown-item {
+  cursor: pointer;
+}

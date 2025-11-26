@@ -1,0 +1,8 @@
+﻿.bi {
+  margin-right: 8px;
+}
+
+.form-control[readonly] {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}

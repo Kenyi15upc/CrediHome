@@ -1,0 +1,78 @@
+﻿<div class="container mt-4">
+  <!-- Título dinámico -->
+  <div *ngIf="!isLoading">
+    <h2 *ngIf="isEditMode"><i class="bi bi-person-circle"></i> Mi Perfil de Cliente</h2>
+    <h2 *ngIf="!isEditMode"><i class="bi bi-person-plus-fill"></i> Completa tu Perfil</h2>
+    <p *ngIf="isEditMode">Aquí puedes ver y actualizar tu información socioeconómica.</p>
+    <p *ngIf="!isEditMode">Para continuar, por favor completa tus datos. Esta información nos ayudará a ofrecerte las mejores simulaciones.</p>
+  </div>
+  <hr>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <!-- Mensaje de Carga -->
+      <div *ngIf="isLoading" class="text-center">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p>Buscando tu información...</p>
+      </div>
+
+      <!-- Mensajes de Feedback -->
+      <div *ngIf="successMessage" class="alert alert-success">
+        {{ successMessage }}
+      </div>
+      <div *ngIf="errorMessage" class="alert alert-danger">
+        {{ errorMessage }}
+      </div>
+
+      <!-- Formulario de Datos del Cliente (Crear o Actualizar) -->
+      <form *ngIf="!isLoading" [formGroup]="clienteForm" (ngSubmit)="onSubmit()">
+        <!-- Fila de Nombre y DNI -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="nombre" class="form-label">Nombre Completo</label>
+            <input type="text" id="nombre" class="form-control" formControlName="nombre">
+          </div>
+          <div class="col-md-6">
+            <label for="dni" class="form-label">DNI</label>
+            <input type="text" id="dni" class="form-control" formControlName="dni">
+          </div>
+        </div>
+
+        <!-- Fila de Correo y Ocupación -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="correo" class="form-label">Correo Electrónico (Usuario)</label>
+            <!-- El correo es el identificador, no es editable -->
+            <input type="email" id="correo" class="form-control" formControlName="correo">
+          </div>
+          <div class="col-md-6">
+            <label for="ocupacion" class="form-label">Ocupación</label>
+            <input type="text" id="ocupacion" class="form-control" formControlName="ocupacion">
+          </div>
+        </div>
+
+        <!-- Fila de Ingresos y Gastos -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="ingresoMensual" class="form-label">Ingreso Mensual (S/)</label>
+            <input type="number" id="ingresoMensual" class="form-control" formControlName="ingresoMensual">
+          </div>
+          <div class="col-md-6">
+            <label for="gastoMensual" class="form-label">Gasto Mensual (S/)</label>
+            <input type="number" id="gastoMensual" class="form-control" formControlName="gastoMensual">
+          </div>
+        </div>
+
+        <!-- Botón dinámico -->
+        <button *ngIf="isEditMode" type="submit" class="btn btn-primary" [disabled]="clienteForm.invalid || !clienteForm.dirty">
+          <i class="bi bi-save-fill"></i> Actualizar Información
+        </button>
+        <button *ngIf="!isEditMode" type="submit" class="btn btn-success" [disabled]="clienteForm.invalid">
+          <i class="bi bi-check-circle-fill"></i> Crear Mi Perfil
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

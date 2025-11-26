@@ -1,0 +1,352 @@
+﻿<div class="container-fluid mt-4">
+
+  <!-- Pantalla de Carga -->
+  <div *ngIf="isLoading" class="text-center mt-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-2">Cargando información del asesor...</p>
+  </div>
+
+  <!-- Contenido Principal (se muestra solo si no está cargando) -->
+  <div *ngIf="!isLoading">
+
+    <!-- SECCIÓN 0: CREAR PERFIL DE ASESOR (se muestra si currentAsesor es null) -->
+    <div *ngIf="!currentAsesor" class="card shadow-sm border-primary">
+      <div class="card-header bg-primary text-white">
+        <h4><i class="bi bi-person-badge"></i> Completa tu Perfil de Asesor</h4>
+      </div>
+      <div class="card-body">
+        <p>Para empezar a utilizar el dashboard, primero necesitamos que completes tu perfil profesional.</p>
+        <form [formGroup]="asesorForm" (ngSubmit)="onSaveAsesor()">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="asesorNombre" class="form-label">Nombre Completo</label>
+              <input type="text" id="asesorNombre" class="form-control" formControlName="nombreA">
+            </div>
+            <div class="col-md-6">
+              <label for="asesorDni" class="form-label">DNI</label>
+              <input type="text" id="asesorDni" class="form-control" formControlName="dniA">
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="asesorTelefono" class="form-label">Teléfono</label>
+              <input type="text" id="asesorTelefono" class="form-control" formControlName="telefonoA">
+            </div>
+            <div class="col-md-6">
+              <label for="asesorCorreo" class="form-label">Correo (de tu cuenta)</label>
+              <input type="email" id="asesorCorreo" class="form-control" formControlName="correoA" readonly>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" [disabled]="asesorForm.invalid">
+            <i class="bi bi-check-circle-fill"></i> Crear Mi Perfil
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PRINCIPAL (se muestra solo si el perfil del asesor ya existe) -->
+    <div *ngIf="currentAsesor">
+      <h2><i class="bi bi-speedometer2"></i> Dashboard del Asesor: {{ currentAsesor.nombreA }}</h2>
+      <hr>
+
+      <!-- SECCIÓN 1: GESTIÓN DE CLIENTES -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h4><i class="bi bi-people-fill"></i> Gestión de Clientes</h4>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-success mb-3" (click)="toggleNuevoClienteForm()">
+            <i class="bi bi-person-plus-fill"></i>
+            {{ showNuevoClienteForm ? 'Ocultar Formulario' : 'Registrar Nuevo Cliente' }}
+          </button>
+          <div *ngIf="showNuevoClienteForm" class="card bg-light p-3 mb-4">
+            <h5>Datos del Nuevo Cliente</h5>
+            <form [formGroup]="clienteForm" (ngSubmit)="onSaveCliente()">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="nombre" class="form-label">Nombre Completo</label>
+                  <input type="text" id="nombre" class="form-control" formControlName="nombre">
+                </div>
+                <div class="col-md-6">
+                  <label for="dni" class="form-label">DNI</label>
+                  <input type="text" id="dni" class="form-control" formControlName="dni">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="correo" class="form-label">Correo Electrónico</label>
+                  <input type="email" id="correo" class="form-control" formControlName="correo">
+                </div>
+                <div class="col-md-6">
+                  <label for="ocupacion" class="form-label">Ocupación</label>
+                  <input type="text" id="ocupacion" class="form-control" formControlName="ocupacion">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="ingresoMensual" class="form-label">Ingreso Mensual (S/)</label>
+                  <input type="number" id="ingresoMensual" class="form-control" formControlName="ingresoMensual">
+                </div>
+                <div class="col-md-6">
+                  <label for="gastoMensual" class="form-label">Gasto Mensual (S/)</label>
+                  <input type="number" id="gastoMensual" class="form-control" formControlName="gastoMensual">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" [disabled]="clienteForm.invalid">Guardar Cliente</button>
+            </form>
+          </div>
+          <h5>Clientes Registrados</h5>
+          <p>Seleccione un cliente para iniciar una simulación.</p>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>DNI</th>
+                  <th>Correo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let cliente of clientes" (click)="onSelectCliente(cliente)" [class.table-primary]="cliente === selectedCliente" style="cursor: pointer;">
+                  <td>{{ cliente.nombre }}</td>
+                  <td>{{ cliente.dni }}</td>
+                  <td>{{ cliente.correo }}</td>
+                  <td>
+                    <button class="btn btn-sm btn-info" (click)="onSelectCliente(cliente)">
+                      <i class="bi bi-check-circle-fill"></i> Seleccionar
+                    </button>
+                  </td>
+                </tr>
+                <tr *ngIf="!clientes || clientes.length === 0">
+                  <td colspan="4" class="text-center">No hay clientes registrados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 2: GESTIÓN DE OFERTA INMOBILIARIA -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h4><i class="bi bi-building-add"></i> Gestión de Oferta Inmobiliaria</h4>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-info mb-3" (click)="toggleNuevaUnidadForm()">
+            <i class="bi bi-plus-circle-fill"></i>
+            {{ showNuevaUnidadForm ? 'Ocultar Formulario' : 'Añadir Nueva Propiedad' }}
+          </button>
+          <div *ngIf="showNuevaUnidadForm" class="card bg-light p-3 mb-4">
+            <h5>Datos de la Nueva Propiedad</h5>
+            <form [formGroup]="unidadForm" (ngSubmit)="onSaveUnidad()">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="unidadNombre" class="form-label">Nombre o Código</label>
+                  <input type="text" id="unidadNombre" class="form-control" formControlName="nombre">
+                </div>
+                <div class="col-md-6">
+                  <label for="unidadDireccion" class="form-label">Dirección</label>
+                  <input type="text" id="unidadDireccion" class="form-control" formControlName="direccion">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label for="unidadPrecio" class="form-label">Precio</label>
+                  <input type="number" id="unidadPrecio" class="form-control" formControlName="precio">
+                </div>
+                <div class="col-md-4">
+                  <label for="unidadMoneda" class="form-label">Moneda</label>
+                  <select id="unidadMoneda" class="form-select" formControlName="moneda">
+                    <option value="SOLES">Soles (S/)</option>
+                    <option value="DOLARES">Dólares ($)</option>
+                  </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="unidadEstado" formControlName="estadoU">
+                    <label class="form-check-label" for="unidadEstado">
+                      Disponible para la venta
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" [disabled]="unidadForm.invalid">Guardar Propiedad</button>
+            </form>
+          </div>
+          <h5>Propiedades Registradas</h5>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Dirección</th>
+                  <th>Precio</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let unidad of unidades">
+                  <td>{{ unidad.nombre }}</td>
+                  <td>{{ unidad.direccion }}</td>
+                  <td>{{ unidad.precio | number:'1.2-2' }} {{ unidad.moneda }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="unidad.estadoU ? 'bg-success' : 'bg-secondary'">
+                      {{ unidad.estadoU ? 'Disponible' : 'No Disponible' }}
+                    </span>
+                  </td>
+                </tr>
+                <tr *ngIf="!unidades || unidades.length === 0">
+                  <td colspan="4" class="text-center">No hay propiedades registradas.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 3: SIMULACIÓN DE CRÉDITO -->
+      <div *ngIf="selectedCliente" class="card mt-4">
+        <div class="card-header">
+          <h4><i class="bi bi-calculator-fill"></i> Nueva Simulación para: {{ selectedCliente.nombre }}</h4>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="creditoForm" (ngSubmit)="onSaveCredito()">
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="unidadInmobiliaria" class="form-label">Unidad Inmobiliaria</label>
+                <select id="unidadInmobiliaria" class="form-select" formControlName="unidadInmobiliaria">
+                  <option [ngValue]="null" disabled>Seleccione una propiedad</option>
+                  <option *ngFor="let unidad of unidades" [ngValue]="unidad.idUnidad">
+                    {{ unidad.nombre }} - {{ unidad.direccion }} ({{ unidad.precio | number:'1.2-2' }} {{ unidad.moneda }})
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="monto" class="form-label">Monto del Préstamo</label>
+                <input type="number" id="monto" class="form-control" formControlName="montoPrestamo">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="plazo" class="form-label">Plazo (meses)</label>
+                <input type="number" id="plazo" class="form-control" formControlName="plazoMeses">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="moneda" class="form-label">Moneda</label>
+                <select id="moneda" class="form-select" formControlName="moneda">
+                  <option value="SOLES">Soles (S/)</option>
+                  <option value="DOLARES">Dólares ($)</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="tasaInteres" class="form-label">Tasa de Interés Anual (%)</label>
+                <input type="number" id="tasaInteres" class="form-control" formControlName="tasaInteres">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="tipoTasa" class="form-label">Tipo de Tasa</label>
+                <select id="tipoTasa" class="form-select" formControlName="tipoTasa">
+                  <option value="EFECTIVA">Efectiva</option>
+                  <option value="NOMINAL">Nominal</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3" *ngIf="creditoForm.get('tipoTasa')?.value === 'NOMINAL'">
+                <label for="capitalizacion" class="form-label">Capitalización</label>
+                <select id="capitalizacion" class="form-select" formControlName="capitalizacion">
+                  <option value="DIARIA">Diaria</option>
+                  <option value="MENSUAL">Mensual</option>
+                  <option value="ANUAL">Anual</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="graciaTotal" class="form-label">Meses de Gracia Total</label>
+                <input type="number" id="graciaTotal" class="form-control" formControlName="graciaTotal">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="graciaParcial" class="form-label">Meses de Gracia Parcial</label>
+                <input type="number" id="graciaParcial" class="form-control" formControlName="graciaParcial">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="bono" class="form-label">Bono Techo Propio</label>
+                <input type="number" id="bono" class="form-control" formControlName="Bono">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="creditoForm.invalid">
+              <i class="bi bi-save-fill"></i> Guardar y Generar Plan
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- SECCIÓN 4: RESULTADOS (Plan de Pagos e Indicadores) -->
+      <div *ngIf="planDePagos.length > 0" class="card mt-4">
+        <div class="card-header">
+          <h4><i class="bi bi-table"></i> Plan de Pagos</h4>
+        </div>
+        <div class="card-body">
+          <!-- Sub-sección de Indicadores -->
+          <div *ngIf="indicadores" class="row mb-4 text-center">
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h5 class="card-title">VAN</h5>
+                  <p class="card-text fs-4">{{ indicadores.van | number:'1.2-2' }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h5 class="card-title">TIR</h5>
+                  <p class="card-text fs-4">{{ indicadores.tir | percent:'1.2-2' }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h5 class="card-title">TCEA</h5>
+                  <p class="card-text fs-4">{{ indicadores.tcea | percent:'1.2-2' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla del Plan de Pagos -->
+          <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+              <thead class="table-dark">
+                <tr>
+                  <th># Cuota</th>
+                  <th>Tipo Gracia</th>
+                  <th>Saldo Inicial</th>
+                  <th>Amortización</th>
+                  <th>Interés</th>
+                  <th>Seg. Desgravamen</th>
+                  <th>Seg. Inmueble</th>
+                  <th>Portes</th>
+                  <th>Cuota Total</th>
+                  <th>Saldo Final</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let cuota of planDePagos">
+                  <td>{{ cuota.numeroCuota }}</td>
+                  <td>{{ cuota.tipoGracia }}</td>
+                  <td>{{ cuota.saldoInicial | number:'1.2-2' }}</td>
+                  <td>{{ cuota.amortizacion | number:'1.2-2' }}</td>
+                  <td>{{ cuota.interes | number:'1.2-2' }}</td>
+                  <td>{{ cuota.seguroDesgravamen | number:'1.2-2' }}</td>
+                  <td>{{ cuota.seguroInmueble | number:'1.2-2' }}</td>
+                  <td>{{ cuota.portes | number:'1.2-2' }}</td>
+                  <td><strong>{{ cuota.cuota | number:'1.2-2' }}</strong></td>
+                  <td>{{ cuota.saldoFinal | number:'1.2-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

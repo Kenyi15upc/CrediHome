@@ -1,0 +1,47 @@
+﻿<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand" routerLink="/home">CrediHome</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/home" routerLinkActive="active">Inicio</a>
+        </li>
+
+        <!-- Vistas para usuarios autenticados -->
+        <li class="nav-item" *ngIf="isLoggedIn && isAsesor">
+          <a class="nav-link" routerLink="/asesor-dashboard" routerLinkActive="active">Dashboard Asesor</a>
+        </li>
+        <li class="nav-item" *ngIf="isLoggedIn && isCliente">
+          <a class="nav-link" routerLink="/cliente-dashboard" routerLinkActive="active">Mi Perfil</a>
+        </li>
+      </ul>
+
+      <ul class="navbar-nav">
+        <!-- Vistas para usuarios NO autenticados -->
+        <ng-container *ngIf="!isLoggedIn; else loggedInTemplate">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/register">Registrarse</a>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-outline-light" routerLink="/login">Iniciar Sesión</a>
+          </li>
+        </ng-container>
+
+        <!-- Template para usuarios autenticados -->
+        <ng-template #loggedInTemplate>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Bienvenido, {{ username }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+              <li><a class="dropdown-item" (click)="logout()">Cerrar Sesión</a></li>
+            </ul>
+          </li>
+        </ng-template>
+      </ul>
+    </div>
+  </div>
+</nav>
