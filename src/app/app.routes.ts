@@ -20,14 +20,16 @@ export const routes: Routes = [
   {
     path: 'asesor-dashboard',
     component: AsesorDashboardComponent,
-
+    canActivate: [AuthGuard, RoleGuard],
+    data: { expectedRole: 'ASESOR' }
   },
 
   // Ruta para el dashboard del Cliente
   {
     path: 'cliente-dashboard',
     component: ClienteDashboardComponent,
-
+    canActivate: [AuthGuard, RoleGuard],
+    data: { expectedRole: 'CLIENTE' }
   },
 
   // Redirección por defecto

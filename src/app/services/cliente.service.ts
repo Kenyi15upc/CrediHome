@@ -7,13 +7,13 @@ import { Cliente } from '../models/cliente';
   providedIn: 'root'
 })
 export class ClienteService {
-  private baseUrl = 'http://localhost:8080/CrediHome';
+  private baseUrl = 'http://localhost:8080/api';
 
   constructor(private http: HttpClient) { }
 
   /**
    * Obtiene la lista de todos los clientes (para el Asesor).
-   * Endpoint: GET /CrediHome/clientes
+   * Endpoint: GET /api/clientes
    */
   getClientes(): Observable<Cliente[]> {
     return this.http.get<Cliente[]>(`${this.baseUrl}/clientes`);
@@ -21,25 +21,25 @@ export class ClienteService {
 
   /**
    * Busca un perfil de cliente asociado a un ID de usuario.
-   * Endpoint: GET /CrediHome/cliente/usuario/{userId}
+   * Endpoint: GET /api/clientes/user/{userId}
    */
   getClienteByUserId(userId: number): Observable<Cliente> {
-    return this.http.get<Cliente>(`${this.baseUrl}/cliente/usuario/${userId}`);
+    return this.http.get<Cliente>(`${this.baseUrl}/clientes/user/${userId}`);
   }
 
   /**
-   * Guarda la información de un nuevo cliente. El backend debe asociarlo al usuario logueado.
-   * Endpoint: POST /CrediHome/cliente
+   * Guarda la información de un nuevo cliente.
+   * Endpoint: POST /api/clientes
    */
-  createCliente(cliente: Omit<Cliente, 'idCliente'>): Observable<Cliente> {
-    return this.http.post<Cliente>(`${this.baseUrl}/cliente`, cliente);
+  createCliente(cliente: any): Observable<Cliente> {
+    return this.http.post<Cliente>(`${this.baseUrl}/clientes`, cliente);
   }
 
   /**
    * Actualiza la información de un cliente existente.
-   * Endpoint: PUT /CrediHome/cliente/modificar/{id}
+   * Endpoint: PUT /api/clientes/{id}
    */
-  updateCliente(id: number, cliente: Cliente): Observable<Cliente> {
-    return this.http.put<Cliente>(`${this.baseUrl}/cliente/modificar/${id}`, cliente);
+  updateCliente(id: number, cliente: any): Observable<Cliente> {
+    return this.http.put<Cliente>(`${this.baseUrl}/clientes/${id}`, cliente);
   }
 }

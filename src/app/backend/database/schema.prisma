@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== AUTENTICACIÓN ====================
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  password  String   @db.VarChar(255)
+  email     String?  @unique @db.VarChar(100)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  roles     UserRole[]
+  cliente   Cliente?
+  asesor    Asesor?
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique @db.VarChar(50)
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId Int  @map("user_id")
+  roleId Int  @map("role_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ==================== CLIENTES ====================
+
+model Cliente {
+  idCliente      Int      @id @default(autoincrement()) @map("id_cliente")
+  userId         Int      @unique @map("user_id")
+  nombre         String   @db.VarChar(100)
+  apellidos      String?  @db.VarChar(100)
+  dni            String   @db.VarChar(20)
+  correo         String?  @db.VarChar(100)
+  telefono       String?  @db.VarChar(20)
+  direccion      String?  @db.VarChar(255)
+  email          String?  @db.VarChar(100)
+  ingresoMensual Float?   @map("ingreso_mensual") @db.DoublePrecision
+  gastoMensual   Float?   @map("gasto_mensual") @db.DoublePrecision
+  ocupacion      String?  @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creditos Credito[]
+
+  @@map("clientes")
+}
+
+// ==================== ASESORES ====================
+
+model Asesor {
+  idAsesor  Int      @id @default(autoincrement()) @map("id_asesor")
+  userId    Int      @unique @map("user_id")
+  nombres   String?  @db.VarChar(100)
+  apellidos String?  @db.VarChar(100)
+  email     String?  @db.VarChar(100)
+  telefono  String?  @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("asesores")
+}
+
+// ==================== CRÉDITOS ====================
+
+model Credito {
+  idCredito       Int      @id @default(autoincrement()) @map("id_credito")
+  clienteId       Int      @map("cliente_id")
+  moneda          String   @db.VarChar(10)
+  monto           Float    @db.DoublePrecision
+  plazo           Int
+  tasaInteres     Float    @map("tasa_interes") @db.DoublePrecision
+  tipoTasa        String   @map("tipo_tasa") @db.VarChar(50)
+  capitalizacion  String   @db.VarChar(50)
+  fechaDesembolso String   @map("fecha_desembolso") @db.VarChar(50)
+  graciaTotal     Int      @default(0) @map("gracia_total")
+  graciaParcial   Int      @default(0) @map("gracia_parcial")
+  unidadInmobiliariaId Int? @map("unidad_inmobiliaria_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  cliente           Cliente              @relation(fields: [clienteId], references: [idCliente], onDelete: Cascade)
+  unidadInmobiliaria UnidadInmobiliaria? @relation(fields: [unidadInmobiliariaId], references: [idUnidad], onDelete: SetNull)
+  planPagos         PlanPago[]
+  indicadores       IndicadorFinanciero?
+
+  @@map("creditos")
+}
+
+// ==================== PLAN DE PAGOS ====================
+
+model PlanPago {
+  id             Int     @id @default(autoincrement())
+  creditoId      Int     @map("credito_id")
+  numeroCuota    Int     @map("numero_cuota")
+  saldoInicial   Float   @map("saldo_inicial") @db.DoublePrecision
+  interes        Float   @db.DoublePrecision
+  cuota          Float   @db.DoublePrecision
+  amortizacion   Float   @db.DoublePrecision
+  saldoFinal     Float   @map("saldo_final") @db.DoublePrecision
+  flujo          Float   @db.DoublePrecision
+  seguroDesgrav  Float?  @map("seguro_desgrav") @db.DoublePrecision
+  seguroInmueble Float?  @map("seguro_inmueble") @db.DoublePrecision
+  portes         Float?  @db.DoublePrecision
+
+  credito Credito @relation(fields: [creditoId], references: [idCredito], onDelete: Cascade)
+
+  @@map("plan_pagos")
+}
+
+// ==================== INDICADORES FINANCIEROS ====================
+
+model IndicadorFinanciero {
+  id        Int   @id @default(autoincrement())
+  creditoId Int   @unique @map("credito_id")
+  van       Float @db.DoublePrecision
+  tir       Float @db.DoublePrecision
+  tcea      Float @db.DoublePrecision
+  tasaCosto Float @map("tasa_costo") @db.DoublePrecision
+
+  credito Credito @relation(fields: [creditoId], references: [idCredito], onDelete: Cascade)
+
+  @@map("indicadores_financieros")
+}
+
+// ==================== UNIDADES INMOBILIARIAS ====================
+
+model UnidadInmobiliaria {
+  idUnidad    Int      @id @default(autoincrement()) @map("id_unidad")
+  tipo        String   @db.VarChar(50)
+  precio      Float    @db.DoublePrecision
+  descripcion String?  @db.Text
+  direccion   String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  creditos Credito[]
+
+  @@map("unidades_inmobiliarias")
+}
+
+// ==================== AUDITORÍA ====================
+
+model AuditLog {
+  id             Int      @id @default(autoincrement())
+  userId         Int?     @map("user_id")
+  username       String?  @db.VarChar(50)
+  action         String   @db.VarChar(100)
+  entityType     String?  @map("entity_type") @db.VarChar(50)
+  entityId       Int?     @map("entity_id")
+  ipAddress      String?  @map("ip_address") @db.VarChar(50)
+  userAgent      String?  @map("user_agent") @db.Text
+  requestMethod  String?  @map("request_method") @db.VarChar(10)
+  requestUrl     String?  @map("request_url") @db.Text
+  requestBody    String?  @map("request_body") @db.Text
+  responseStatus Int?     @map("response_status")
+  errorMessage   String?  @map("error_message") @db.Text
+  timestamp      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+

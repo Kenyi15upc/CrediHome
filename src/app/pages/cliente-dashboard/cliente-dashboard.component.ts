@@ -22,6 +22,8 @@ export class ClienteDashboardComponent implements OnInit {
   isEditMode = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
+  creditoForm!: FormGroup;
+  resultadoSimulacion: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -33,6 +35,7 @@ export class ClienteDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
+    this.initCreditoForm();
     this.loadClienteData();
   }
 
@@ -40,11 +43,26 @@ export class ClienteDashboardComponent implements OnInit {
     // El formulario se inicializa vacío. El correo del usuario logueado se usará como referencia.
     this.clienteForm = this.fb.group({
       nombre: ['', Validators.required],
-      dni: ['', Validators.required],
-      correo: ['', [Validators.required, Validators.email]],
-      ingresoMensual: [null, [Validators.required, Validators.min(0)]],
-      gastoMensual: [null, [Validators.required, Validators.min(0)]],
-      ocupacion: ['', Validators.required]
+      apellidos: [''],
+      dni: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(8)]],
+      telefono: [''],
+      email: ['', Validators.email],
+      correo: ['', Validators.email],
+      direccion: [''],
+      ocupacion: [''],
+      ingresoMensual: [null, Validators.min(0)],
+      gastoMensual: [null, Validators.min(0)]
+    });
+  }
+
+  initCreditoForm(): void {
+    this.creditoForm = this.fb.group({
+      moneda: ['SOLES', Validators.required],
+      monto: [null, [Validators.required, Validators.min(1)]],
+      plazo: [null, [Validators.required, Validators.min(1)]],
+      tasaInteres: [null, [Validators.required, Validators.min(0)]],
+      tipoTasa: ['EFECTIVA', Validators.required],
+      capitalizacion: ['MENSUAL', Validators.required]
     });
   }
 
@@ -58,7 +76,16 @@ export class ClienteDashboardComponent implements OnInit {
       return;
     }
 
-    this.clienteService.getClienteByUserId(this.currentUser.id).subscribe({
+    // El 'sub' del token contiene el ID del usuario
+    const userId = parseInt(this.currentUser.sub);
+
+    if (isNaN(userId)) {
+      this.errorMessage = "ID de usuario inválido.";
+      this.isLoading = false;
+      return;
+    }
+
+    this.clienteService.getClienteByUserId(userId).subscribe({
       next: (clienteEncontrado) => {
         // Si se encuentra, se cargan los datos y se pasa a modo edición
         this.cliente = clienteEncontrado;
@@ -106,8 +133,13 @@ export class ClienteDashboardComponent implements OnInit {
       });
     } else {
       // --- MODO CREACIÓN ---
-      // El backend debe asociar este nuevo cliente con el ID del usuario autenticado
-      this.clienteService.createCliente(formValue).subscribe({
+      // Agregar el userId al payload
+      const clienteData = {
+        ...formValue,
+        userId: parseInt(this.currentUser!.sub)
+      };
+
+      this.clienteService.createCliente(clienteData).subscribe({
         next: (clienteNuevo) => {
           this.cliente = clienteNuevo;
           this.isEditMode = true; // Se cambia a modo edición
@@ -120,5 +152,41 @@ export class ClienteDashboardComponent implements OnInit {
         }
       });
     }
+  }
+
+  simularCredito(): void {
+    if (this.creditoForm.invalid) {
+      return;
+    }
+
+    const data = this.creditoForm.value;
+
+    // Convertir tasa anual a tasa mensual
+    let tasaMensual = data.tasaInteres / 100;
+
+    if (data.tipoTasa === 'EFECTIVA') {
+      // Convertir tasa efectiva anual a mensual
+      tasaMensual = Math.pow(1 + tasaMensual, 1/12) - 1;
+    } else {
+      // Tasa nominal: dividir entre 12
+      tasaMensual = tasaMensual / 12;
+    }
+
+    // Cálculo de la cuota mensual con el método francés
+    const monto = data.monto;
+    const plazo = data.plazo;
+    const cuotaMensual = monto * (tasaMensual * Math.pow(1 + tasaMensual, plazo)) / (Math.pow(1 + tasaMensual, plazo) - 1);
+
+    const totalPagar = cuotaMensual * plazo;
+    const totalIntereses = totalPagar - monto;
+
+    this.resultadoSimulacion = {
+      cuotaMensual: cuotaMensual,
+      totalPagar: totalPagar,
+      totalIntereses: totalIntereses
+    };
+
+    this.successMessage = '¡Simulación completada! Revisa los resultados abajo.';
+    setTimeout(() => this.successMessage = null, 3000);
   }
 }

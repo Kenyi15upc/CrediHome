@@ -1,15 +1,14 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-home',
+  standalone: true,
+  imports: [RouterLink],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
-export class HomeComponent implements OnInit {
-
+export class HomeComponent {
   constructor() { }
-
-  ngOnInit(): void {
-  }
 
 }

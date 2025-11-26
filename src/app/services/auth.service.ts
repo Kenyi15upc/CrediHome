@@ -75,10 +75,13 @@ export class AuthService {
       return false;
     }
     const decoded = this.decodeToken(token);
-    const isExpired = decoded.exp * 1000 < Date.now();
-    if (isExpired) {
-      this.logout();
-      return false;
+    // Verificar si el token tiene exp y si está expirado
+    if (decoded.exp) {
+      const isExpired = decoded.exp * 1000 < Date.now();
+      if (isExpired) {
+        this.logout();
+        return false;
+      }
     }
     return true;
   }

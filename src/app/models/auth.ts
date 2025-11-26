@@ -12,9 +12,9 @@ export interface AuthResponse {
 
 // Esta interfaz representa la información que decodificamos del token JWT.
 export interface DecodedToken {
-  id: number; //ID del usuario, que debe estar en el token
-  sub: string; // Subject (username)
-  roles: string[];
-  iat: number; // Issued at
-  exp: number; // Expiration time
+  sub: string; // Subject (ID del usuario como string)
+  username: string; // Nombre de usuario
+  roles: string[]; // Roles del usuario
+  iat?: number; // Issued at (opcional)
+  exp?: number; // Expiration time (opcional)
 }

@@ -30,9 +30,15 @@ export class NavbarComponent implements OnInit, OnDestroy {
       this.isLoggedIn = !!user;
 
       if (user && user.roles) {
-        this.username = user.sub;
-        this.isAsesor = user.roles.includes('ROLE_ASESOR');
-        this.isCliente = user.roles.includes('ROLE_CLIENTE');
+        // Usar username en lugar de sub (que es el ID)
+        this.username = user.username || user.sub;
+        // Buscar roles sin el prefijo ROLE_
+        this.isAsesor = user.roles.includes('ASESOR') || user.roles.includes('ROLE_ASESOR');
+        this.isCliente = user.roles.includes('CLIENTE') || user.roles.includes('ROLE_CLIENTE');
+
+        console.log('Usuario autenticado:', this.username);
+        console.log('Es Asesor:', this.isAsesor);
+        console.log('Es Cliente:', this.isCliente);
       } else {
         // Si no hay usuario o el objeto no tiene la propiedad 'roles', reseteamos todo a false.
         this.username = null;

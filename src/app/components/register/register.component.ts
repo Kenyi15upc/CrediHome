@@ -1,6 +1,6 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService} from '../../services/auth.service';
 import { CommonModule } from '@angular/common';
 
@@ -25,7 +25,7 @@ function MustMatch(controlName: string, matchingControlName: string) {
   selector: 'app-register',
   templateUrl: './register.component.html',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   styleUrls: ['./register.component.css']
 })
 export class RegisterComponent implements OnInit {
@@ -42,10 +42,10 @@ export class RegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.registerForm = this.formBuilder.group({
-      username: ['', Validators.required],
-      password: ['', [Validators.required, Validators.minLength(6)]],
+      username: ['', [Validators.required, Validators.minLength(3)]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', Validators.required],
-      role: ['CLIENTE', Validators.required]
+      role: ['ROLE_CLIENTE', Validators.required]
     }, {
       validator: MustMatch('password', 'confirmPassword')
     });
@@ -58,37 +58,50 @@ export class RegisterComponent implements OnInit {
     this.errorMessage = null;
     this.successMessage = null;
 
+    // Validar formulario antes de enviar
     if (this.registerForm.invalid) {
+      if (this.f['password'].errors?.['minlength']) {
+        this.errorMessage = 'La contraseña debe tener al menos 8 caracteres.';
+      } else if (this.f['username'].errors?.['required']) {
+        this.errorMessage = 'El nombre de usuario es requerido.';
+      } else if (this.f['password'].errors?.['required']) {
+        this.errorMessage = 'La contraseña es requerida.';
+      } else if (this.f['confirmPassword'].errors?.['mustMatch']) {
+        this.errorMessage = 'Las contraseñas no coinciden.';
+      } else {
+        this.errorMessage = 'Por favor, completa todos los campos correctamente.';
+      }
       return;
     }
 
     const userPayload = {
-      id: 0,
       username: this.f['username'].value,
       password: this.f['password'].value,
-      roles: [
-        {
-          id: 0,
-          name: this.f['role'].value
-        }
-      ]
+      email: null
     };
 
     this.authService.register(userPayload).subscribe({
       next: () => {
-        this.successMessage = '¡Registro exitoso! Ahora puedes iniciar sesión.';
-        setTimeout(() => {
-          this.router.navigate(['/login']);
-        }, 3000);
+        this.successMessage = '¡Usuario registrado exitosamente! Ya puedes iniciar sesión.';
+        this.registerForm.reset();
+        this.submitted = false;
+        // NO redirigir automáticamente, solo mostrar el mensaje
       },
       error: (err) => {
         console.error('Error en el registro:', err);
-        if (err.status === 409 || (err.error && err.error.message && err.error.message.includes('constraint'))) {
+        console.error('Error completo:', JSON.stringify(err, null, 2));
+
+        // Manejar diferentes tipos de errores
+        if (err.status === 409) {
           this.errorMessage = 'El nombre de usuario ya existe. Por favor, elige otro.';
-        } else if (err.status === 403) {
-          this.errorMessage = 'Acción prohibida. Verifica que los datos enviados son correctos.';
+        } else if (err.status === 400) {
+          this.errorMessage = 'Datos inválidos. Asegúrate de que el usuario tenga al menos 3 caracteres y la contraseña 8.';
+        } else if (err.status === 0) {
+          this.errorMessage = 'No se puede conectar con el servidor. Verifica que el backend esté corriendo en http://localhost:8080';
+        } else if (err.error && err.error.message) {
+          this.errorMessage = err.error.message;
         } else {
-          this.errorMessage = 'Ocurrió un error durante el registro. Por favor, intenta de nuevo.';
+          this.errorMessage = 'Ocurrió un error durante el registro. Verifica que el backend esté corriendo.';
         }
       }
     });
