@@ -1,177 +1,171 @@
-﻿﻿<div class="container mt-4">
-  <!-- Título dinámico -->
-  <div *ngIf="!isLoading">
-    <h2 *ngIf="isEditMode"><i class="bi bi-person-circle"></i> Mi Perfil de Cliente</h2>
-    <h2 *ngIf="!isEditMode"><i class="bi bi-person-plus-fill"></i> Completa tu Perfil</h2>
-    <p *ngIf="isEditMode">Aquí puedes ver y actualizar tu información socioeconómica.</p>
-    <p *ngIf="!isEditMode">Para continuar, por favor completa tus datos. Esta información nos ayudará a ofrecerte las mejores simulaciones.</p>
+﻿<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-speedometer2"></i> Panel del Cliente</h2>
+    <button class="btn btn-danger" (click)="logout()">
+      <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+    </button>
   </div>
   <hr>
 
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <!-- Mensaje de Carga -->
-      <div *ngIf="isLoading" class="text-center">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando...</span>
-        </div>
-        <p>Buscando tu información...</p>
-      </div>
+  <!-- Navegación de Tabs -->
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link" [class.active]="activeTab === 'perfil-usuario'" (click)="activeTab = 'perfil-usuario'" href="javascript:void(0)">
+        <i class="bi bi-person-circle"></i> Mi Perfil de Usuario
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" [class.active]="activeTab === 'mis-datos'" (click)="activeTab = 'mis-datos'" href="javascript:void(0)">
+        <i class="bi bi-person-vcard"></i> Mis Datos Socioeconómicos
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" [class.active]="activeTab === 'simulaciones'" (click)="activeTab = 'simulaciones'" href="javascript:void(0)">
+        <i class="bi bi-calculator"></i> Mis Simulaciones
+      </a>
+    </li>
+  </ul>
 
-      <!-- Mensajes de Feedback -->
-      <div *ngIf="successMessage" class="alert alert-success">
-        {{ successMessage }}
-      </div>
-      <div *ngIf="errorMessage" class="alert alert-danger">
-        {{ errorMessage }}
-      </div>
+  <!-- Mensajes de Feedback -->
+  <div *ngIf="successMessage" class="alert alert-success">
+    {{ successMessage }}
+  </div>
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
 
-      <!-- Formulario de Datos del Cliente (Crear o Actualizar) -->
-      <form *ngIf="!isLoading" [formGroup]="clienteForm" (ngSubmit)="onSubmit()">
-        <!-- Fila de Nombre y Apellidos -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label for="nombre" class="form-label">Nombres <span class="text-danger">*</span></label>
-            <input type="text" id="nombre" class="form-control" formControlName="nombre" placeholder="Ej: Juan Carlos">
-          </div>
-          <div class="col-md-6">
-            <label for="apellidos" class="form-label">Apellidos</label>
-            <input type="text" id="apellidos" class="form-control" formControlName="apellidos" placeholder="Ej: García Pérez">
-          </div>
-        </div>
+  <!-- Tab: Perfil de Usuario -->
+  <div *ngIf="activeTab === 'perfil-usuario'" class="tab-content">
+    <h3 class="mb-4"><i class="bi bi-person-circle"></i> Mi Perfil de Usuario</h3>
 
-        <!-- Fila de DNI y Teléfono -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label for="dni" class="form-label">DNI <span class="text-danger">*</span></label>
-            <input type="text" id="dni" class="form-control" formControlName="dni" placeholder="12345678" maxlength="8">
+    <div class="card shadow-sm p-4">
+      <form [formGroup]="perfilUsuarioForm" (ngSubmit)="actualizarPerfilUsuario()">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Nombre de Usuario</label>
+            <input type="text" class="form-control" formControlName="username" readonly>
+            <small class="text-muted">El nombre de usuario no se puede cambiar</small>
           </div>
-          <div class="col-md-6">
-            <label for="telefono" class="form-label">Teléfono</label>
-            <input type="tel" id="telefono" class="form-control" formControlName="telefono" placeholder="987654321" maxlength="9">
-          </div>
-        </div>
 
-        <!-- Fila de Email y Correo -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" id="email" class="form-control" formControlName="email" placeholder="usuario@ejemplo.com">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" formControlName="email" placeholder="correo@ejemplo.com">
           </div>
-          <div class="col-md-6">
-            <label for="correo" class="form-label">Correo Alternativo</label>
-            <input type="email" id="correo" class="form-control" formControlName="correo" placeholder="correo@ejemplo.com">
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Nombre Completo</label>
+            <input type="text" class="form-control" formControlName="nombre" placeholder="Juan Carlos">
           </div>
-        </div>
 
-        <!-- Dirección -->
-        <div class="mb-3">
-          <label for="direccion" class="form-label">Dirección</label>
-          <input type="text" id="direccion" class="form-control" formControlName="direccion" placeholder="Av. Principal 123, Lima">
-        </div>
-
-        <!-- Fila de Ocupación -->
-        <div class="mb-3">
-          <label for="ocupacion" class="form-label">Ocupación</label>
-          <input type="text" id="ocupacion" class="form-control" formControlName="ocupacion" placeholder="Ej: Ingeniero de Sistemas">
-        </div>
-
-        <!-- Fila de Ingresos y Gastos -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label for="ingresoMensual" class="form-label">Ingreso Mensual (S/)</label>
-            <input type="number" id="ingresoMensual" class="form-control" formControlName="ingresoMensual" placeholder="3000.00" step="0.01">
-          </div>
-          <div class="col-md-6">
-            <label for="gastoMensual" class="form-label">Gasto Mensual (S/)</label>
-            <input type="number" id="gastoMensual" class="form-control" formControlName="gastoMensual" placeholder="1500.00" step="0.01">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Apellidos</label>
+            <input type="text" class="form-control" formControlName="apellidos" placeholder="García Pérez">
           </div>
         </div>
 
-        <!-- Botón dinámico -->
-        <div class="d-grid gap-2">
-          <button *ngIf="isEditMode" type="submit" class="btn btn-primary btn-lg" [disabled]="clienteForm.invalid || !clienteForm.dirty">
-            <i class="bi bi-save-fill"></i> Actualizar Información
-          </button>
-          <button *ngIf="!isEditMode" type="submit" class="btn btn-success btn-lg" [disabled]="clienteForm.invalid">
-            <i class="bi bi-check-circle-fill"></i> Crear Mi Perfil
+        <hr class="my-4">
+        <h5>Cambiar Contraseña</h5>
+        <p class="text-muted small">Deja estos campos vacíos si no deseas cambiar tu contraseña</p>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Nueva Contraseña</label>
+            <input type="password" class="form-control" formControlName="newPassword"
+                   placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Confirmar Nueva Contraseña</label>
+            <input type="password" class="form-control" formControlName="confirmPassword"
+                   placeholder="Repite la contraseña" autocomplete="new-password">
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary" [disabled]="perfilUsuarioForm.invalid">
+            <i class="bi bi-save"></i> Actualizar Perfil de Usuario
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Sección del Simulador de Créditos (solo si el perfil ya existe) -->
-  <div *ngIf="isEditMode && cliente" class="mt-4">
-    <div class="card shadow-sm">
-      <div class="card-header bg-primary text-white">
-        <h4 class="mb-0"><i class="bi bi-calculator"></i> Simulador de Crédito Hipotecario</h4>
-      </div>
+  <!-- Tab: Mis Datos Socioeconómicos -->
+  <div *ngIf="activeTab === 'mis-datos'" class="tab-content">
+    <h3 class="mb-4"><i class="bi bi-person-vcard"></i> Mis Datos Socioeconómicos</h3>
+    <p class="text-muted">Esta información fue registrada por tu asesor. Si necesitas actualizarla, contacta con tu asesor.</p>
+
+    <div *ngIf="!cliente && !isLoading" class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle"></i>
+      <strong>Atención:</strong> Aún no tienes un perfil socioeconómico registrado.
+      Por favor, contacta con tu asesor para que registre tus datos.
+    </div>
+
+    <div *ngIf="cliente" class="card">
       <div class="card-body">
-        <p class="text-muted">
-          Simula tu crédito hipotecario con el Método Francés. Ingresa los datos de tu préstamo para calcular las cuotas mensuales, VAN, TIR y otros indicadores financieros.
-        </p>
-
-        <form [formGroup]="creditoForm" (ngSubmit)="simularCredito()">
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <label for="moneda" class="form-label">Moneda <span class="text-danger">*</span></label>
-              <select id="moneda" class="form-select" formControlName="moneda">
-                <option value="SOLES">Soles (S/)</option>
-                <option value="DOLARES">Dólares ($)</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label for="monto" class="form-label">Monto del Préstamo <span class="text-danger">*</span></label>
-              <input type="number" id="monto" class="form-control" formControlName="monto" placeholder="150000">
-            </div>
-            <div class="col-md-4">
-              <label for="plazo" class="form-label">Plazo (meses) <span class="text-danger">*</span></label>
-              <input type="number" id="plazo" class="form-control" formControlName="plazo" placeholder="240">
-            </div>
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>DNI:</strong> {{ cliente.dni }}
           </div>
-
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <label for="tasaInteres" class="form-label">Tasa de Interés (%) <span class="text-danger">*</span></label>
-              <input type="number" id="tasaInteres" class="form-control" formControlName="tasaInteres" placeholder="8.5" step="0.01">
-            </div>
-            <div class="col-md-4">
-              <label for="tipoTasa" class="form-label">Tipo de Tasa <span class="text-danger">*</span></label>
-              <select id="tipoTasa" class="form-select" formControlName="tipoTasa">
-                <option value="EFECTIVA">Efectiva</option>
-                <option value="NOMINAL">Nominal</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label for="capitalizacion" class="form-label">Capitalización <span class="text-danger">*</span></label>
-              <select id="capitalizacion" class="form-select" formControlName="capitalizacion">
-                <option value="MENSUAL">Mensual</option>
-                <option value="TRIMESTRAL">Trimestral</option>
-                <option value="SEMESTRAL">Semestral</option>
-                <option value="ANUAL">Anual</option>
-              </select>
-            </div>
+          <div class="col-md-6">
+            <strong>Nombre Completo:</strong> {{ cliente.nombre }} {{ cliente.apellidos }}
           </div>
+        </div>
 
-          <div class="d-grid">
-            <button type="submit" class="btn btn-primary btn-lg" [disabled]="creditoForm.invalid">
-              <i class="bi bi-calculator-fill"></i> Simular Crédito
-            </button>
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Email:</strong> {{ cliente.email || cliente.correo || 'No registrado' }}
           </div>
-        </form>
+          <div class="col-md-6">
+            <strong>Teléfono:</strong> {{ cliente.telefono || 'No registrado' }}
+          </div>
+        </div>
 
-        <!-- Resultado de la simulación -->
-        <div *ngIf="resultadoSimulacion" class="mt-4 alert alert-info">
-          <h5><i class="bi bi-info-circle"></i> Resultado de la Simulación</h5>
-          <p><strong>Cuota Mensual:</strong> {{ resultadoSimulacion.cuotaMensual | currency:'S/ ' }}</p>
-          <p><strong>Total a Pagar:</strong> {{ resultadoSimulacion.totalPagar | currency:'S/ ' }}</p>
-          <p><strong>Total Intereses:</strong> {{ resultadoSimulacion.totalIntereses | currency:'S/ ' }}</p>
-          <p class="mb-0 text-muted">
-            <em>Nota: Esta es una simulación referencial. Para más detalles, consulta con un asesor.</em>
-          </p>
+        <div class="row mb-3">
+          <div class="col-md-12">
+            <strong>Dirección:</strong> {{ cliente.direccion || 'No registrada' }}
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Ocupación:</strong> {{ cliente.ocupacion || 'No registrada' }}
+          </div>
+          <div class="col-md-6">
+            <strong>Ingreso Mensual:</strong> {{ cliente.ingresoMensual | currency:'S/ ' }}
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Gasto Mensual:</strong> {{ cliente.gastoMensual | currency:'S/ ' }}
+          </div>
+          <div class="col-md-6">
+            <strong>Capacidad de Pago:</strong> {{ ((cliente?.ingresoMensual || 0) - (cliente?.gastoMensual || 0)) | currency:'S/ ' }}
+          </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Tab: Mis Simulaciones -->
+  <div *ngIf="activeTab === 'simulaciones'" class="tab-content">
+    <h3 class="mb-4"><i class="bi bi-calculator"></i> Mis Simulaciones de Crédito</h3>
+
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i>
+      Aquí podrás ver las simulaciones de crédito que tu asesor ha creado para ti.
+    </div>
+
+    <div class="alert alert-warning">
+      <i class="bi bi-clock-history"></i>
+      <strong>Próximamente:</strong> Visualización de planes de pago, VAN, TIR y TCEA de tus simulaciones.
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="text-center">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
     </div>
   </div>
 </div>

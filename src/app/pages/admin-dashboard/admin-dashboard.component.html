@@ -1,0 +1,386 @@
+<div class="container-fluid admin-dashboard">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar">
+      <div class="sidebar-header p-3">
+        <h5 class="text-white">Panel de Administración</h5>
+        <p class="text-muted small mb-0">CrediHome</p>
+      </div>
+
+      <ul class="nav flex-column mt-3">
+        <li class="nav-item">
+          <a class="nav-link"
+             [class.active]="activeTab === 'perfil'"
+             (click)="activeTab = 'perfil'"
+             href="javascript:void(0)">
+            <i class="bi bi-person-circle"></i> Mi Perfil
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link"
+             [class.active]="activeTab === 'configuracion'"
+             (click)="activeTab = 'configuracion'"
+             href="javascript:void(0)">
+            <i class="bi bi-gear"></i> Configuración del Sistema
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link"
+             [class.active]="activeTab === 'entidades'"
+             (click)="activeTab = 'entidades'"
+             href="javascript:void(0)">
+            <i class="bi bi-bank"></i> Entidades Financieras
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link"
+             [class.active]="activeTab === 'usuarios'"
+             (click)="activeTab = 'usuarios'"
+             href="javascript:void(0)">
+            <i class="bi bi-people"></i> Gestión de Usuarios
+          </a>
+        </li>
+        <li class="nav-item mt-4">
+          <a class="nav-link text-danger" (click)="logout()" href="javascript:void(0)">
+            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Administrador del Sistema</h1>
+      </div>
+
+      <!-- Mensajes -->
+      <div *ngIf="message" class="alert" [class.alert-success]="message.type === 'success'" [class.alert-danger]="message.type === 'error'">
+        {{ message.text }}
+      </div>
+
+      <!-- Tab: Mi Perfil -->
+      <div *ngIf="activeTab === 'perfil'" class="tab-content">
+        <h3 class="mb-4"><i class="bi bi-person-circle"></i> Mi Perfil de Usuario</h3>
+        <p class="text-muted">Actualiza tu información personal y cambia tu contraseña.</p>
+
+        <div class="card p-4">
+          <form [formGroup]="perfilForm" (ngSubmit)="actualizarPerfil()">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre de Usuario</label>
+                <input type="text" class="form-control" formControlName="username" readonly>
+                <small class="text-muted">El nombre de usuario no se puede cambiar</small>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" formControlName="email" placeholder="correo@ejemplo.com">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre Completo</label>
+                <input type="text" class="form-control" formControlName="nombre" placeholder="Juan Carlos">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Apellidos</label>
+                <input type="text" class="form-control" formControlName="apellidos" placeholder="García Pérez">
+              </div>
+            </div>
+
+            <hr class="my-4">
+            <h5>Cambiar Contraseña</h5>
+            <p class="text-muted small">Deja estos campos vacíos si no deseas cambiar tu contraseña</p>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nueva Contraseña</label>
+                <input type="password" class="form-control" formControlName="newPassword"
+                       placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+                <div *ngIf="perfilForm.get('newPassword')?.errors?.['minlength']" class="text-danger small">
+                  La contraseña debe tener al menos 8 caracteres
+                </div>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Confirmar Nueva Contraseña</label>
+                <input type="password" class="form-control" formControlName="confirmPassword"
+                       placeholder="Repite la contraseña" autocomplete="new-password">
+                <div *ngIf="perfilForm.get('confirmPassword')?.errors?.['mustMatch']" class="text-danger small">
+                  Las contraseñas no coinciden
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary" [disabled]="loading || perfilForm.invalid">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                <i class="bi bi-save"></i> Actualizar Perfil
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tab: Configuración del Sistema -->
+      <div *ngIf="activeTab === 'configuracion'" class="tab-content">
+        <h3 class="mb-4">⚙️ Configuración del Sistema</h3>
+        <p class="text-muted">Define los parámetros por defecto para el cálculo de créditos MiVivienda.</p>
+
+        <form [formGroup]="configForm" (ngSubmit)="saveConfiguracion()" class="card p-4">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Moneda por Defecto</label>
+              <select class="form-select" formControlName="monedaPorDefecto">
+                <option value="PEN">Soles (PEN)</option>
+                <option value="USD">Dólares (USD)</option>
+              </select>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Tipo de Tasa por Defecto</label>
+              <select class="form-select" formControlName="tipoTasaDefecto">
+                <option value="EFECTIVA">Tasa Efectiva</option>
+                <option value="NOMINAL">Tasa Nominal</option>
+              </select>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Capitalización por Defecto</label>
+              <select class="form-select" formControlName="capitalizacionDefecto">
+                <option value="MENSUAL">Mensual</option>
+                <option value="TRIMESTRAL">Trimestral</option>
+                <option value="SEMESTRAL">Semestral</option>
+                <option value="ANUAL">Anual</option>
+              </select>
+            </div>
+
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Gracia Total Máxima (meses)</label>
+              <input type="number" class="form-control" formControlName="graciaTotalMaxima" min="0">
+            </div>
+
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Gracia Parcial Máxima (meses)</label>
+              <input type="number" class="form-control" formControlName="graciaParcialMaxima" min="0">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <button type="submit" class="btn btn-primary" [disabled]="loading || configForm.invalid">
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+              Guardar Configuración
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tab: Entidades Financieras -->
+      <div *ngIf="activeTab === 'entidades'" class="tab-content">
+        <h3 class="mb-4">🏦 Entidades Financieras Autorizadas</h3>
+
+        <!-- Formulario de Entidad -->
+        <div class="card p-4 mb-4">
+          <h5>{{ editingEntidad ? 'Editar Entidad' : 'Nueva Entidad Financiera' }}</h5>
+          <form [formGroup]="entidadForm" (ngSubmit)="saveEntidad()">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre *</label>
+                <input type="text" class="form-control" formControlName="nombre">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Código *</label>
+                <input type="text" class="form-control" formControlName="codigo" [readonly]="editingEntidad !== null">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Estado</label>
+                <select class="form-select" formControlName="activa">
+                  <option [value]="true">Activa</option>
+                  <option [value]="false">Inactiva</option>
+                </select>
+              </div>
+
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Tasa Mínima (%)</label>
+                <input type="number" step="0.01" class="form-control" formControlName="tasaMinima">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Tasa Máxima (%)</label>
+                <input type="number" step="0.01" class="form-control" formControlName="tasaMaxima">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Monto Mínimo</label>
+                <input type="number" class="form-control" formControlName="montoMinimo">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Monto Máximo</label>
+                <input type="number" class="form-control" formControlName="montoMaximo">
+              </div>
+
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Plazo Mínimo (meses)</label>
+                <input type="number" class="form-control" formControlName="plazoMinimo">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Plazo Máximo (meses)</label>
+                <input type="number" class="form-control" formControlName="plazoMaximo">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Acepta Bono Techo Propio</label>
+                <select class="form-select" formControlName="aceptaBonoTechoPropio">
+                  <option [value]="true">Sí</option>
+                  <option [value]="false">No</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button type="submit" class="btn btn-success me-2" [disabled]="loading || entidadForm.invalid">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                {{ editingEntidad ? 'Actualizar' : 'Crear' }}
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="cancelEditEntidad()" *ngIf="editingEntidad">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Lista de Entidades -->
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Tasa Min/Max</th>
+                <th>Monto Min/Max</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entidad of entidades">
+                <td>{{ entidad.codigo }}</td>
+                <td>{{ entidad.nombre }}</td>
+                <td>{{ entidad.tasaMinima }}% - {{ entidad.tasaMaxima }}%</td>
+                <td>{{ entidad.montoMinimo | number }} - {{ entidad.montoMaximo | number }}</td>
+                <td>
+                  <span class="badge" [class.bg-success]="entidad.activa" [class.bg-secondary]="!entidad.activa">
+                    {{ entidad.activa ? 'Activa' : 'Inactiva' }}
+                  </span>
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-primary me-1" (click)="editEntidad(entidad)">Editar</button>
+                  <button class="btn btn-sm btn-danger" (click)="deleteEntidad(entidad.id!)">Eliminar</button>
+                </td>
+              </tr>
+              <tr *ngIf="entidades.length === 0">
+                <td colspan="6" class="text-center">No hay entidades financieras registradas</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Usuarios -->
+      <div *ngIf="activeTab === 'usuarios'" class="tab-content">
+        <h3 class="mb-4">👥 Gestión de Usuarios</h3>
+
+        <!-- Formulario de Usuario -->
+        <div class="card p-4 mb-4">
+          <h5>{{ editingUsuario ? 'Editar Usuario' : 'Nuevo Usuario' }}</h5>
+          <form [formGroup]="usuarioForm" (ngSubmit)="saveUsuario()">
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Nombre de Usuario *</label>
+                <input type="text" class="form-control" formControlName="username">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" formControlName="email">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">{{ editingUsuario ? 'Nueva Contraseña' : 'Contraseña *' }}</label>
+                <input type="password" class="form-control" formControlName="password"
+                       [placeholder]="editingUsuario ? 'Dejar en blanco para no cambiar' : 'Mínimo 8 caracteres'">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Rol *</label>
+                <select class="form-select" formControlName="role">
+                  <option value="ROLE_CLIENTE">Cliente</option>
+                  <option value="ROLE_ASESOR">Asesor Inmobiliario</option>
+                  <option value="ROLE_ADMINISTRADOR">Administrador</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Estado</label>
+                <select class="form-select" formControlName="enabled">
+                  <option [value]="true">Habilitado</option>
+                  <option [value]="false">Deshabilitado</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button type="submit" class="btn btn-success me-2" [disabled]="loading || usuarioForm.invalid">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                {{ editingUsuario ? 'Actualizar' : 'Crear' }}
+              </button>
+              <button type="button" class="btn btn-secondary" (click)="cancelEditUsuario()" *ngIf="editingUsuario">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Lista de Usuarios -->
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Fecha Creación</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let usuario of usuarios">
+                <td>{{ usuario.id }}</td>
+                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.email || '-' }}</td>
+                <td>
+                  <span class="badge bg-info">{{ usuario.roles[0]?.replace('ROLE_', '') || 'Sin rol' }}</span>
+                </td>
+                <td>
+                  <span class="badge" [class.bg-success]="usuario.enabled" [class.bg-danger]="!usuario.enabled">
+                    {{ usuario.enabled ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td>{{ usuario.createdAt | date:'short' }}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary me-1" (click)="editUsuario(usuario)">Editar</button>
+                  <button class="btn btn-sm btn-warning me-1" (click)="toggleUsuarioEstado(usuario)">
+                    {{ usuario.enabled ? 'Deshabilitar' : 'Habilitar' }}
+                  </button>
+                  <button class="btn btn-sm btn-danger" (click)="deleteUsuario(usuario.id)">Eliminar</button>
+                </td>
+              </tr>
+              <tr *ngIf="usuarios.length === 0">
+                <td colspan="7" class="text-center">No hay usuarios registrados</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+

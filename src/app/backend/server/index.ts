@@ -33,7 +33,6 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-// Endpoint de autenticación (login)
 app.post('/CrediHome/authenticate', async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
@@ -44,7 +43,6 @@ app.post('/CrediHome/authenticate', async (req: Request, res: Response) => {
       });
     }
 
-    // Buscar el usuario en la base de datos
     const user = await prisma.user.findUnique({
       where: { username },
       include: {
@@ -68,7 +66,6 @@ app.post('/CrediHome/authenticate', async (req: Request, res: Response) => {
       });
     }
 
-    // Verificar la contraseña
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -77,10 +74,8 @@ app.post('/CrediHome/authenticate', async (req: Request, res: Response) => {
       });
     }
 
-    // Obtener los roles del usuario
     const roles = user.roles.map(ur => ur.role.name);
 
-    // Generar JWT
     const JWT_SECRET = process.env.JWT_SECRET || 'tu_clave_secreta_super_segura_cambiala_en_produccion_2024';
     const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '24h';
 
@@ -92,15 +87,13 @@ app.post('/CrediHome/authenticate', async (req: Request, res: Response) => {
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRATION } as jwt.SignOptions);
 
-    console.log(`✅ Usuario autenticado: ${user.username} (Roles: ${roles.join(', ')})`);
-
     res.status(200).json({
       jwt: token,
       username: user.username,
       roles: roles
     });
   } catch (error: any) {
-    console.error('❌ Error en autenticación:', error);
+    console.error('Error en autenticación:', error);
     res.status(500).json({
       message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -150,6 +143,8 @@ app.post('/api/user', async (req: Request, res: Response) => {
     const newUser = await prisma.user.create({
       data: {
         username,
+        nombre: req.body.nombre || null,
+        apellidos: req.body.apellidos || null,
         password: hashedPassword,
         email: email || null,
         enabled: true
@@ -157,18 +152,19 @@ app.post('/api/user', async (req: Request, res: Response) => {
       select: {
         id: true,
         username: true,
+        nombre: true,
+        apellidos: true,
         email: true,
         enabled: true,
         createdAt: true
       }
     });
 
-    console.log('✅ Usuario creado en PostgreSQL:', newUser.username);
+    console.log('Usuario creado:', newUser.username);
     res.status(201).json(newUser);
   } catch (error: any) {
-    console.error('❌ Error al crear usuario:', error);
+    console.error('Error al crear usuario:', error);
 
-    // Manejar errores específicos de conexión
     if (error.code === 'P1001' || error.message?.includes('Can\'t reach database')) {
       return res.status(503).json({
         message: 'No se puede conectar a la base de datos. Verifica que PostgreSQL esté corriendo.'
@@ -264,13 +260,96 @@ app.post('/api/save/:userId/:roleId', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('❌ Error al asignar rol:', error);
 
-    // Manejar error de clave foránea
     if (error.code === 'P2003') {
       return res.status(400).json({
         message: 'El rol especificado no existe. Ejecuta: npm run db:seed'
       });
     }
 
+    res.status(500).json({
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+app.get('/api/user/:userId', async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.userId);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'userId debe ser un número válido' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        nombre: true,
+        apellidos: true,
+        email: true,
+        enabled: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.status(200).json(user);
+  } catch (error: any) {
+    console.error('Error al obtener usuario:', error);
+    res.status(500).json({
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+app.put('/api/user/:userId', async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { nombre, apellidos, email, password } = req.body;
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'userId debe ser un número válido' });
+    }
+
+    const updateData: any = {};
+
+    if (nombre !== undefined) updateData.nombre = nombre;
+    if (apellidos !== undefined) updateData.apellidos = apellidos;
+    if (email !== undefined) updateData.email = email || null;
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        nombre: true,
+        apellidos: true,
+        email: true,
+        enabled: true,
+        updatedAt: true
+      }
+    });
+
+    console.log('Usuario actualizado:', updatedUser.username);
+    res.status(200).json(updatedUser);
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    console.error('Error al actualizar usuario:', error);
     res.status(500).json({
       message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -293,7 +372,20 @@ app.get('/CrediHome/unidades', async (req: Request, res: Response) => {
       }
     });
 
-    res.status(200).json(unidades);
+    // Mapear al formato esperado por el frontend
+    const response = unidades.map(u => ({
+      idUnidad: u.idUnidad,
+      nombre: u.tipo,
+      tipo: u.tipo,
+      precio: u.precio,
+      descripcion: u.descripcion,
+      direccion: u.direccion,
+      moneda: 'SOLES', // Por defecto, ya que no está en la BD
+      estadoU: true, // Por defecto, ya que no está en la BD
+      fechaRegistro: u.createdAt.toISOString()
+    }));
+
+    res.status(200).json(response);
   } catch (error: any) {
     console.error('❌ Error al obtener unidades:', error);
     res.status(500).json({
@@ -328,23 +420,39 @@ app.get('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
 // POST /CrediHome/unidades - Crear una nueva unidad inmobiliaria
 app.post('/CrediHome/unidades', async (req: Request, res: Response) => {
   try {
-    const { tipo, precio, descripcion, direccion } = req.body;
+    const { nombre, tipo, precio, descripcion, direccion, moneda, estadoU } = req.body;
 
-    if (!tipo || !precio) {
-      return res.status(400).json({ message: 'tipo y precio son requeridos' });
+    // Aceptar 'nombre' o 'tipo' para compatibilidad
+    const tipoUnidad = tipo || nombre;
+
+    if (!tipoUnidad || !precio) {
+      return res.status(400).json({ message: 'nombre/tipo y precio son requeridos' });
     }
 
     const unidad = await prisma.unidadInmobiliaria.create({
       data: {
-        tipo,
+        tipo: tipoUnidad,
         precio: parseFloat(precio),
-        descripcion,
-        direccion
+        descripcion: descripcion || null,
+        direccion: direccion || null
       }
     });
 
+    // Retornar en formato compatible con el frontend
+    const response = {
+      idUnidad: unidad.idUnidad,
+      nombre: unidad.tipo,
+      tipo: unidad.tipo,
+      precio: unidad.precio,
+      descripcion: unidad.descripcion,
+      direccion: unidad.direccion,
+      moneda: moneda || 'SOLES',
+      estadoU: estadoU !== undefined ? estadoU : true,
+      fechaRegistro: unidad.createdAt.toISOString()
+    };
+
     console.log('✅ Unidad inmobiliaria creada:', unidad.tipo);
-    res.status(201).json(unidad);
+    res.status(201).json(response);
   } catch (error: any) {
     console.error('❌ Error al crear unidad:', error);
     res.status(500).json({
@@ -420,7 +528,6 @@ app.delete('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
 
 // ==================== ENDPOINTS DE CLIENTES ====================
 
-// GET: Obtener cliente por user ID
 app.get('/api/clientes/user/:userId', async (req: Request, res: Response) => {
   try {
     const userId = parseInt(req.params.userId);
@@ -434,12 +541,12 @@ app.get('/api/clientes/user/:userId', async (req: Request, res: Response) => {
     });
 
     if (!cliente) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
+      return res.status(404).json({ message: 'Cliente no encontrado para este usuario' });
     }
 
     res.status(200).json(cliente);
   } catch (error: any) {
-    console.error('❌ Error al obtener cliente:', error);
+    console.error('Error al obtener cliente:', error);
     res.status(500).json({
       message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -447,16 +554,14 @@ app.get('/api/clientes/user/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// POST: Crear cliente
 app.post('/api/clientes', async (req: Request, res: Response) => {
   try {
-    const { userId, dni, nombre, apellidos, telefono, direccion, email, ingresoMensual } = req.body;
+    const { userId, dni, nombre, apellidos, telefono, direccion, email, correo, ingresoMensual, gastoMensual, ocupacion } = req.body;
 
     if (!userId || !dni || !nombre) {
       return res.status(400).json({ message: 'userId, dni y nombre son requeridos' });
     }
 
-    // Verificar que el usuario existe
     const user = await prisma.user.findUnique({
       where: { id: parseInt(userId) }
     });
@@ -465,7 +570,6 @@ app.post('/api/clientes', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    // Verificar que no exista ya un cliente para este usuario
     const existingCliente = await prisma.cliente.findUnique({
       where: { userId: parseInt(userId) }
     });
@@ -479,18 +583,21 @@ app.post('/api/clientes', async (req: Request, res: Response) => {
         userId: parseInt(userId),
         dni,
         nombre,
-        apellidos,
-        telefono,
-        direccion,
-        email,
-        ingresoMensual: ingresoMensual ? parseFloat(ingresoMensual) : null
+        apellidos: apellidos || null,
+        telefono: telefono || null,
+        direccion: direccion || null,
+        email: email || null,
+        correo: correo || null,
+        ingresoMensual: ingresoMensual ? parseFloat(ingresoMensual) : null,
+        gastoMensual: gastoMensual ? parseFloat(gastoMensual) : null,
+        ocupacion: ocupacion || null
       }
     });
 
-    console.log(`✅ Cliente creado: ${nuevoCliente.nombre} ${nuevoCliente.apellidos}`);
+    console.log(`Cliente creado: ${nuevoCliente.nombre} ${nuevoCliente.apellidos || ''}`);
     res.status(201).json(nuevoCliente);
   } catch (error: any) {
-    console.error('❌ Error al crear cliente:', error);
+    console.error('Error al crear cliente:', error);
     res.status(500).json({
       message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -498,11 +605,10 @@ app.post('/api/clientes', async (req: Request, res: Response) => {
   }
 });
 
-// PUT: Actualizar cliente
 app.put('/api/clientes/:id', async (req: Request, res: Response) => {
   try {
     const clienteId = parseInt(req.params.id);
-    const { dni, nombre, apellidos, telefono, direccion, email, ingresoMensual } = req.body;
+    const { dni, nombre, apellidos, telefono, direccion, email, correo, ingresoMensual, gastoMensual, ocupacion } = req.body;
 
     if (isNaN(clienteId)) {
       return res.status(400).json({ message: 'ID de cliente inválido' });
@@ -513,21 +619,24 @@ app.put('/api/clientes/:id', async (req: Request, res: Response) => {
       data: {
         dni,
         nombre,
-        apellidos,
-        telefono,
-        direccion,
-        email,
-        ingresoMensual: ingresoMensual ? parseFloat(ingresoMensual) : null
+        apellidos: apellidos || null,
+        telefono: telefono || null,
+        direccion: direccion || null,
+        email: email || null,
+        correo: correo || null,
+        ingresoMensual: ingresoMensual ? parseFloat(ingresoMensual) : null,
+        gastoMensual: gastoMensual ? parseFloat(gastoMensual) : null,
+        ocupacion: ocupacion || null
       }
     });
 
-    console.log(`✅ Cliente actualizado: ${clienteActualizado.nombre} ${clienteActualizado.apellidos}`);
+    console.log(`Cliente actualizado: ${clienteActualizado.nombre} ${clienteActualizado.apellidos || ''}`);
     res.status(200).json(clienteActualizado);
   } catch (error: any) {
     if (error.code === 'P2025') {
       return res.status(404).json({ message: 'Cliente no encontrado' });
     }
-    console.error('❌ Error al actualizar cliente:', error);
+    console.error('Error al actualizar cliente:', error);
     res.status(500).json({
       message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -535,7 +644,6 @@ app.put('/api/clientes/:id', async (req: Request, res: Response) => {
   }
 });
 
-// GET: Listar todos los clientes
 app.get('/api/clientes', async (req: Request, res: Response) => {
   try {
     const clientes = await prisma.cliente.findMany({
@@ -551,7 +659,7 @@ app.get('/api/clientes', async (req: Request, res: Response) => {
 
     res.status(200).json(clientes);
   } catch (error: any) {
-    console.error('❌ Error al listar clientes:', error);
+    console.error('Error al listar clientes:', error);
     res.status(500).json({
       message: 'Error interno del servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -560,6 +668,50 @@ app.get('/api/clientes', async (req: Request, res: Response) => {
 });
 
 // ==================== FIN ENDPOINTS CLIENTES ====================
+
+// ==================== UNIDADES INMOBILIARIAS ====================
+
+app.get('/api/unidades', async (req: Request, res: Response) => {
+  try {
+    const unidades = await prisma.unidadInmobiliaria.findMany();
+    res.status(200).json(unidades);
+  } catch (error: any) {
+    console.error('Error al listar unidades:', error);
+    res.status(500).json({
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+app.post('/api/unidades', async (req: Request, res: Response) => {
+  try {
+    const { tipo, precio, descripcion, direccion } = req.body;
+
+    if (!tipo || !precio) {
+      return res.status(400).json({ message: 'Tipo y precio son requeridos' });
+    }
+
+    const nuevaUnidad = await prisma.unidadInmobiliaria.create({
+      data: {
+        tipo,
+        precio: parseFloat(precio),
+        descripcion: descripcion || null,
+        direccion: direccion || null
+      }
+    });
+
+    res.status(201).json(nuevaUnidad);
+  } catch (error: any) {
+    console.error('Error al crear unidad:', error);
+    res.status(500).json({
+      message: 'Error interno del servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ==================== FIN UNIDADES ====================
 
 process.on('SIGINT', async () => {
   console.log('\n🛑 Cerrando conexión a PostgreSQL...');
@@ -571,149 +723,6 @@ process.on('SIGTERM', async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
-
-// ==================== ENDPOINTS DE CLIENTES ====================
-
-// GET: Obtener cliente por user ID
-app.get('/api/clientes/user/:userId', async (req: Request, res: Response) => {
-  try {
-    const userId = parseInt(req.params.userId);
-
-    if (isNaN(userId)) {
-      return res.status(400).json({ message: 'userId debe ser un número válido' });
-    }
-
-    const cliente = await prisma.cliente.findUnique({
-      where: { userId }
-    });
-
-    if (!cliente) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
-    }
-
-    res.status(200).json(cliente);
-  } catch (error: any) {
-    console.error('❌ Error al obtener cliente:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// POST: Crear cliente
-app.post('/api/clientes', async (req: Request, res: Response) => {
-  try {
-    const { userId, dni, nombre, apellidos, telefono, direccion, email, ingresoMensual } = req.body;
-
-    if (!userId || !dni || !nombre) {
-      return res.status(400).json({ message: 'userId, dni y nombre son requeridos' });
-    }
-
-    // Verificar que el usuario existe
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) }
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    // Verificar que no exista ya un cliente para este usuario
-    const existingCliente = await prisma.cliente.findUnique({
-      where: { userId: parseInt(userId) }
-    });
-
-    if (existingCliente) {
-      return res.status(409).json({ message: 'Ya existe un cliente para este usuario' });
-    }
-
-    const nuevoCliente = await prisma.cliente.create({
-      data: {
-        userId: parseInt(userId),
-        dni,
-        nombre,
-        apellidos,
-        telefono,
-        direccion,
-        email,
-        ingresoMensual: ingresoMensual ? parseFloat(ingresoMensual) : null
-      }
-    });
-
-    console.log(`✅ Cliente creado: ${nuevoCliente.nombre} ${nuevoCliente.apellidos || ''}`);
-    res.status(201).json(nuevoCliente);
-  } catch (error: any) {
-    console.error('❌ Error al crear cliente:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// PUT: Actualizar cliente
-app.put('/api/clientes/:id', async (req: Request, res: Response) => {
-  try {
-    const clienteId = parseInt(req.params.id);
-    const { dni, nombre, apellidos, telefono, direccion, email, ingresoMensual } = req.body;
-
-    if (isNaN(clienteId)) {
-      return res.status(400).json({ message: 'ID de cliente inválido' });
-    }
-
-    const clienteActualizado = await prisma.cliente.update({
-      where: { idCliente: clienteId },
-      data: {
-        dni,
-        nombre,
-        apellidos,
-        telefono,
-        direccion,
-        email,
-        ingresoMensual: ingresoMensual ? parseFloat(ingresoMensual) : null
-      }
-    });
-
-    console.log(`✅ Cliente actualizado: ${clienteActualizado.nombre} ${clienteActualizado.apellidos || ''}`);
-    res.status(200).json(clienteActualizado);
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
-    }
-    console.error('❌ Error al actualizar cliente:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// GET: Listar todos los clientes
-app.get('/api/clientes', async (req: Request, res: Response) => {
-  try {
-    const clientes = await prisma.cliente.findMany({
-      include: {
-        user: {
-          select: {
-            username: true,
-            enabled: true
-          }
-        }
-      }
-    });
-
-    res.status(200).json(clientes);
-  } catch (error: any) {
-    console.error('❌ Error al listar clientes:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// ==================== FIN ENDPOINTS CLIENTES ====================
 
 async function startServer() {
   try {

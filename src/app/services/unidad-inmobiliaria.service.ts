@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@angular/core';
+﻿﻿import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { UnidadInmobiliaria } from '../models/unidad-inmobiliaria';
@@ -21,9 +21,9 @@ export class UnidadInmobiliariaService {
 
   /**
    * Guarda una nueva unidad inmobiliaria.
-   * Endpoint: POST /CrediHome/unidad
+   * Endpoint: POST /CrediHome/unidades
    */
   createUnidad(unidad: Omit<UnidadInmobiliaria, 'idUnidad'>): Observable<UnidadInmobiliaria> {
-    return this.http.post<UnidadInmobiliaria>(`${this.baseUrl}/unidad`, unidad);
+    return this.http.post<UnidadInmobiliaria>(`${this.baseUrl}/unidades`, unidad);
   }
 }

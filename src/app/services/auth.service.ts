@@ -1,6 +1,7 @@
 ﻿import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { switchMap, tap } from 'rxjs/operators';
 import { jwtDecode } from 'jwt-decode';
 import { AuthRequest, AuthResponse, DecodedToken } from '../models/auth';
 import { User } from '../models/user';
@@ -9,11 +10,13 @@ import { User } from '../models/user';
   providedIn: 'root',
 })
 export class AuthService {
-  private baseUrl = 'http://localhost:8080'; // URL de tu backend
+  private baseUrl = 'http://localhost:8080';
   private currentUserSubject: BehaviorSubject<DecodedToken | null>;
   public currentUser: Observable<DecodedToken | null>;
 
   private readonly ROL_CLIENTE_ID = 10;
+  private readonly ROL_ASESOR_ID = 20;
+  private readonly ROL_ADMINISTRADOR_ID = 30;
 
   constructor(private http: HttpClient) {
     const token = this.getToken();
@@ -38,19 +41,30 @@ export class AuthService {
     );
   }
 
+  private getRoleId(roleName: string): number {
+    switch (roleName) {
+      case 'ROLE_CLIENTE':
+        return this.ROL_CLIENTE_ID;
+      case 'ROLE_ASESOR':
+        return this.ROL_ASESOR_ID;
+      case 'ROLE_ADMINISTRADOR':
+        return this.ROL_ADMINISTRADOR_ID;
+      default:
+        return this.ROL_CLIENTE_ID;
+    }
+  }
+
   register(user: User): Observable<any> {
-    // Flujo encadenado:
-    // 1. Crear el usuario con POST /api/user
-    // 2. Usar el ID del usuario devuelto para asignarle el rol con POST /api/save/{user_id}/{rol_id}
+    const roleId = this.getRoleId(user.role || 'ROLE_CLIENTE');
+
     return this.http.post<User>(`${this.baseUrl}/api/user`, user).pipe(
       switchMap((createdUser: User) => {
         if (!createdUser || !createdUser.id) {
           throw new Error('El backend no devolvió el usuario creado con su ID.');
         }
-        // Ahora llamamos al segundo endpoint para asignar el rol
         return this.http.post(
-          `${this.baseUrl}/api/save/${createdUser.id}/${this.ROL_CLIENTE_ID}`,
-          {} // El cuerpo de la petición es vacío
+          `${this.baseUrl}/api/save/${createdUser.id}/${roleId}`,
+          {}
         );
       })
     );
@@ -75,7 +89,6 @@ export class AuthService {
       return false;
     }
     const decoded = this.decodeToken(token);
-    // Verificar si el token tiene exp y si está expirado
     if (decoded.exp) {
       const isExpired = decoded.exp * 1000 < Date.now();
       if (isExpired) {
@@ -95,3 +108,4 @@ export class AuthService {
     return !!user && user.roles.includes(role);
   }
 }
+

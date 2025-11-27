@@ -17,17 +17,61 @@
 
         <!-- Campo de Usuario -->
         <div class="mb-3">
-          <label for="username" class="form-label">Nombre de Usuario</label>
+          <label for="username" class="form-label">Nombre de Usuario <span class="text-danger">*</span></label>
           <input
             type="text"
             id="username"
             class="form-control"
             formControlName="username"
             placeholder="Mínimo 3 caracteres"
+            autocomplete="username"
             [ngClass]="{ 'is-invalid': submitted && f['username'].errors }">
           <div *ngIf="submitted && f['username'].errors" class="invalid-feedback">
             <div *ngIf="f['username'].errors['required']">El nombre de usuario es requerido.</div>
             <div *ngIf="f['username'].errors['minlength']">El usuario debe tener al menos 3 caracteres.</div>
+          </div>
+        </div>
+
+        <!-- Campos de Nombre Completo -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="nombre" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
+            <input
+              type="text"
+              id="nombre"
+              class="form-control"
+              formControlName="nombre"
+              placeholder="Juan Carlos"
+              [ngClass]="{ 'is-invalid': submitted && f['nombre'].errors }">
+            <div *ngIf="submitted && f['nombre'].errors" class="invalid-feedback">
+              <div *ngIf="f['nombre'].errors['required']">El nombre es requerido.</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label for="apellidos" class="form-label">Apellidos</label>
+            <input
+              type="text"
+              id="apellidos"
+              class="form-control"
+              formControlName="apellidos"
+              placeholder="García Pérez">
+          </div>
+        </div>
+
+        <!-- Campo de Email -->
+        <div class="mb-3">
+          <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            formControlName="email"
+            placeholder="correo@ejemplo.com"
+            autocomplete="email"
+            [ngClass]="{ 'is-invalid': submitted && f['email'].errors }">
+          <div *ngIf="submitted && f['email'].errors" class="invalid-feedback">
+            <div *ngIf="f['email'].errors['required']">El email es requerido.</div>
+            <div *ngIf="f['email'].errors['email']">Ingresa un email válido.</div>
           </div>
         </div>
 
@@ -40,8 +84,14 @@
             formControlName="role"
             [ngClass]="{ 'is-invalid': submitted && f['role'].errors }">
             <option value="ROLE_CLIENTE">Cliente</option>
-            <option value="ROLE_ASESOR">Asesor</option>
+            <option value="ROLE_ASESOR">Asesor Inmobiliario</option>
+            <option value="ROLE_ADMINISTRADOR">Administrador del Sistema</option>
           </select>
+          <small class="form-text text-muted">
+            <strong>Cliente:</strong> Puede consultar sus créditos y simulaciones.<br>
+            <strong>Asesor:</strong> Puede registrar clientes, unidades inmobiliarias y generar planes de pago.<br>
+            <strong>Administrador:</strong> Puede gestionar usuarios, configuración y entidades financieras.
+          </small>
           <div *ngIf="submitted && f['role'].errors" class="invalid-feedback">
             <div *ngIf="f['role'].errors['required']">Debe seleccionar un tipo de usuario.</div>
           </div>
@@ -56,6 +106,7 @@
             class="form-control"
             formControlName="password"
             placeholder="Mínimo 8 caracteres"
+            autocomplete="new-password"
             [ngClass]="{ 'is-invalid': submitted && f['password'].errors }">
           <div *ngIf="submitted && f['password'].errors" class="invalid-feedback">
             <div *ngIf="f['password'].errors['required']">La contraseña es requerida.</div>
@@ -71,6 +122,7 @@
             id="confirmPassword"
             class="form-control"
             formControlName="confirmPassword"
+            autocomplete="new-password"
             [ngClass]="{ 'is-invalid': submitted && f['confirmPassword'].errors }">
           <div *ngIf="submitted && f['confirmPassword'].errors" class="invalid-feedback">
             <div *ngIf="f['confirmPassword'].errors['required']">Por favor, confirma la contraseña.</div>

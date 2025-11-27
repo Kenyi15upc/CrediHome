@@ -18,6 +18,7 @@
             id="username"
             class="form-control"
             formControlName="username"
+            autocomplete="username"
             [ngClass]="{ 'is-invalid': submitted && f['username'].errors }">
           <div *ngIf="submitted && f['username'].errors" class="invalid-feedback">
             <div *ngIf="f['username'].errors['required']">El nombre de usuario es requerido.</div>
@@ -32,6 +33,7 @@
             id="password"
             class="form-control"
             formControlName="password"
+            autocomplete="current-password"
             [ngClass]="{ 'is-invalid': submitted && f['password'].errors }">
           <div *ngIf="submitted && f['password'].errors" class="invalid-feedback">
             <div *ngIf="f['password'].errors['required']">La contraseña es requerida.</div>

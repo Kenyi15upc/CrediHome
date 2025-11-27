@@ -42,21 +42,14 @@ export class LoginComponent implements OnInit {
     this.submitted = true;
     this.errorMessage = null;
 
-    // Detener si el formulario es inválido
     if (this.loginForm.invalid) {
       return;
     }
 
     this.authService.login(this.loginForm.value).subscribe({
       next: (response) => {
-        console.log('Login exitoso', response);
-        console.log('JWT recibido:', response.jwt);
-        console.log('Roles:', response.roles);
-
-        // Dar tiempo para que el token se procese
         setTimeout(() => {
           const user = this.authService.currentUserValue;
-          console.log('Usuario decodificado:', user);
           this.redirectUser(user);
         }, 100);
       },
@@ -69,26 +62,16 @@ export class LoginComponent implements OnInit {
 
   private redirectUser(user: DecodedToken | null): void {
     if (user) {
-      console.log('Roles del usuario:', user.roles);
-
-      // Verificar roles sin el prefijo ROLE_
-      if (user.roles.includes('ASESOR') || user.roles.includes('ROLE_ASESOR')) {
-        console.log('Redirigiendo a asesor-dashboard');
-        this.router.navigate(['/asesor-dashboard']).then(success => {
-          console.log('Navegación exitosa:', success);
-        });
+      if (user.roles.includes('ADMINISTRADOR') || user.roles.includes('ROLE_ADMINISTRADOR')) {
+        this.router.navigate(['/admin-dashboard']);
+      } else if (user.roles.includes('ASESOR') || user.roles.includes('ROLE_ASESOR')) {
+        this.router.navigate(['/asesor-dashboard']);
       } else if (user.roles.includes('CLIENTE') || user.roles.includes('ROLE_CLIENTE')) {
-        console.log('Redirigiendo a cliente-dashboard');
-        this.router.navigate(['/cliente-dashboard']).then(success => {
-          console.log('Navegación exitosa:', success);
-        });
+        this.router.navigate(['/cliente-dashboard']);
       } else {
-        // Fallback por si el usuario no tiene un rol esperado
-        console.log('Sin rol reconocido, redirigiendo a home');
         this.router.navigate(['/home']);
       }
     } else {
-      console.log('Usuario no autenticado, redirigiendo a home');
       this.router.navigate(['/home']);
     }
   }

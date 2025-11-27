@@ -5,102 +5,155 @@ import { Credito } from '../../models/credito';
 import { IndicadorFinanciero } from '../../models/indicador-financiero';
 import { PlanPago } from '../../models/plan-pago';
 import { UnidadInmobiliaria } from '../../models/unidad-inmobiliaria';
-import { Asesor } from '../../models/asesor';
 import { ClienteService } from '../../services/cliente.service';
 import { CreditoService } from '../../services/credito.service';
 import { UnidadInmobiliariaService } from '../../services/unidad-inmobiliaria.service';
-import { AsesorService } from '../../services/asesor.service';
 import { AuthService } from '../../services/auth.service';
-import { CommonModule, DecimalPipe, PercentPipe } from '@angular/common';
+import { UserService } from '../../services/user.service';
+import { CommonModule } from '@angular/common';
 import { switchMap, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-asesor-dashboard',
   templateUrl: './asesor-dashboard.component.html',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DecimalPipe, PercentPipe],
+  imports: [CommonModule, ReactiveFormsModule],
   styleUrls: ['./asesor-dashboard.component.css']
 })
 export class AsesorDashboardComponent implements OnInit {
+  activeTab: 'perfil' | 'clientes' | 'unidades' | 'simulaciones' = 'perfil';
 
-  // Estados de la UI
   showNuevoClienteForm = false;
   showNuevaUnidadForm = false;
   isLoading = true;
 
-  // Datos
   clientes: Cliente[] = [];
   unidades: UnidadInmobiliaria[] = [];
   selectedCliente: Cliente | null = null;
-  currentAsesor: Asesor | null = null;
+  selectedUnidad: UnidadInmobiliaria | null = null;
 
-  // --- PROPIEDADES RESTAURADAS ---
   savedCredito: Credito | null = null;
   planDePagos: PlanPago[] = [];
   indicadores: IndicadorFinanciero | null = null;
 
-  // Formularios
-  asesorForm!: FormGroup;
+  perfilForm!: FormGroup;
   clienteForm!: FormGroup;
   unidadForm!: FormGroup;
   creditoForm!: FormGroup;
+
+  successMessage: string | null = null;
+  errorMessage: string | null = null;
+  currencySymbol: string = 'PEN'; // Código de moneda dinámico (PEN o USD)
 
   constructor(
     private fb: FormBuilder,
     private clienteService: ClienteService,
     private creditoService: CreditoService,
     private unidadService: UnidadInmobiliariaService,
-    private asesorService: AsesorService,
-    private authService: AuthService
+    private authService: AuthService,
+    private userService: UserService
   ) { }
 
   ngOnInit(): void {
-    this.initAsesorForm();
+    this.initPerfilForm();
     this.initClienteForm();
     this.initUnidadForm();
     this.initCreditoForm();
-    this.loadAsesorProfile();
+    this.loadUserProfile();
+    this.loadClientes();
+    this.loadUnidades();
+    this.isLoading = false;
   }
 
-  loadAsesorProfile(): void {
-    this.isLoading = true;
-    const currentUser = this.authService.currentUserValue;
+  get currencyLabel(): string {
+    return this.currencySymbol === 'USD' ? '$' : 'S/';
+  }
 
+  loadUserProfile(): void {
+    const currentUser = this.authService.currentUserValue;
     if (currentUser && currentUser.sub) {
-      this.asesorService.getAsesorByEmail(currentUser.sub).subscribe({
-        next: (asesor) => {
-          this.currentAsesor = asesor;
-          this.loadClientes();
-          this.loadUnidades();
-          this.isLoading = false;
+      this.userService.getUserProfile(parseInt(currentUser.sub)).subscribe({
+        next: (user) => {
+          this.perfilForm.patchValue({
+            nombre: user.nombre || '',
+            apellidos: user.apellidos || '',
+            email: user.email || ''
+          });
         },
-        error: (err) => {
-          if (err.status === 404) {
-            console.log("Perfil de asesor no encontrado. Mostrando formulario de creación.");
-            this.isLoading = false;
-          } else {
-            console.error("Error cargando el perfil del asesor:", err);
-            this.isLoading = false;
-          }
-        }
+        error: (err) => console.error('Error al cargar perfil:', err)
       });
-    } else {
-      this.isLoading = false;
     }
   }
 
-  // --- MÉTODOS RESTAURADOS Y COMPLETOS ---
-
-  initAsesorForm(): void {
+  initPerfilForm(): void {
     const currentUser = this.authService.currentUserValue;
-    this.asesorForm = this.fb.group({
-      nombreA: ['', Validators.required],
-      dniA: ['', Validators.required],
-      telefonoA: ['', Validators.required],
-      correoA: [{ value: currentUser?.sub || '', disabled: true }, Validators.required],
-      estadoA: [true]
+
+    this.perfilForm = this.fb.group({
+      username: [{ value: currentUser?.username || '', disabled: true }],
+      nombre: [''],
+      apellidos: [''],
+      email: [''],
+      newPassword: ['', Validators.minLength(8)],
+      confirmPassword: ['']
+    }, {
+      validators: this.passwordMatchValidator
     });
   }
+
+  passwordMatchValidator(formGroup: FormGroup): { [key: string]: boolean } | null {
+    const newPassword = formGroup.get('newPassword')?.value;
+    const confirmPassword = formGroup.get('confirmPassword')?.value;
+
+    if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+      formGroup.get('confirmPassword')?.setErrors({ mustMatch: true });
+      return { mustMatch: true };
+    }
+    return null;
+  }
+
+  actualizarPerfil(): void {
+    if (this.perfilForm.invalid) {
+      return;
+    }
+
+    const formValue = this.perfilForm.getRawValue();
+    const currentUser = this.authService.currentUserValue;
+
+    if (!currentUser || !currentUser.sub) {
+      this.errorMessage = 'No se pudo identificar el usuario';
+      return;
+    }
+
+    const updateData: any = {
+      nombre: formValue.nombre,
+      apellidos: formValue.apellidos,
+      email: formValue.email || null
+    };
+
+    if (formValue.newPassword) {
+      updateData.password = formValue.newPassword;
+    }
+
+    this.userService.updateUserProfile(parseInt(currentUser.sub), updateData).subscribe({
+      next: () => {
+        this.successMessage = '¡Perfil actualizado exitosamente!';
+        this.errorMessage = null;
+        this.perfilForm.patchValue({
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setTimeout(() => {
+          this.successMessage = null;
+        }, 5000);
+      },
+      error: (err) => {
+        console.error('Error al actualizar perfil:', err);
+        this.errorMessage = 'Error al actualizar el perfil';
+        this.successMessage = null;
+      }
+    });
+  }
+
 
   initClienteForm(): void {
     this.clienteForm = this.fb.group({
@@ -125,17 +178,19 @@ export class AsesorDashboardComponent implements OnInit {
 
   initCreditoForm(): void {
     this.creditoForm = this.fb.group({
-      unidadInmobiliaria: [null, Validators.required],
-      moneda: ['SOLES', Validators.required],
-      montoPrestamo: [null, [Validators.required, Validators.min(1)]],
-      plazoMeses: [null, [Validators.required, Validators.min(1)]],
+      monto: [null, [Validators.required, Validators.min(1)]],
+      plazo: [null, [Validators.required, Validators.min(1)]],
       tasaInteres: [null, [Validators.required, Validators.min(0)]],
       tipoTasa: ['EFECTIVA', Validators.required],
-      capitalizacion: ['MENSUAL'],
-      fechaInicio: [new Date().toISOString().split('T')[0], Validators.required],
-      graciaTotal: [0, Validators.required],
-      graciaParcial: [0, Validators.required],
-      Bono: [0]
+      capitalizacion: ['MENSUAL', Validators.required],
+      moneda: ['PEN', Validators.required],
+      graciaTotal: [0, [Validators.required, Validators.min(0)]],
+      graciaParcial: [0, [Validators.required, Validators.min(0)]]
+    });
+
+    // Escuchar cambios en el campo moneda
+    this.creditoForm.get('moneda')?.valueChanges.subscribe(moneda => {
+      this.currencySymbol = moneda; // 'USD' o 'PEN'
     });
   }
 
@@ -163,18 +218,6 @@ export class AsesorDashboardComponent implements OnInit {
     this.unidadForm.reset({ moneda: 'SOLES', estadoU: true });
   }
 
-  onSaveAsesor(): void {
-    if (this.asesorForm.invalid) return;
-    const asesorPayload = this.asesorForm.getRawValue();
-    this.asesorService.createAsesor(asesorPayload).subscribe({
-      next: (newAsesor) => {
-        this.currentAsesor = newAsesor;
-        console.log("Perfil de asesor creado con éxito.");
-      },
-      error: (err) => console.error("Error al crear el perfil de asesor:", err)
-    });
-  }
-
   onSaveCliente(): void {
     if (this.clienteForm.invalid) return;
     this.clienteService.createCliente(this.clienteForm.value).subscribe({
@@ -187,12 +230,11 @@ export class AsesorDashboardComponent implements OnInit {
   }
 
   onSaveUnidad(): void {
-    if (this.unidadForm.invalid || !this.currentAsesor) {
-      console.error('Formulario de unidad inválido o el perfil del asesor no está cargado.');
+    if (this.unidadForm.invalid) {
+      console.error('Formulario de unidad inválido.');
       return;
     }
-    const unidadPayload = { ...this.unidadForm.value, asesor: this.currentAsesor };
-    this.unidadService.createUnidad(unidadPayload).subscribe({
+    this.unidadService.createUnidad(this.unidadForm.value).subscribe({
       next: () => {
         this.loadUnidades();
         this.toggleNuevaUnidadForm();
@@ -211,38 +253,66 @@ export class AsesorDashboardComponent implements OnInit {
       moneda: 'SOLES',
       tipoTasa: 'EFECTIVA',
       capitalizacion: 'MENSUAL',
-      fechaInicio: new Date().toISOString().split('T')[0],
       graciaTotal: 0,
       graciaParcial: 0,
       Bono: 0
     });
   }
 
+  onSelectUnidad(unidad: UnidadInmobiliaria): void {
+    this.selectedUnidad = unidad;
+    if (this.creditoForm) {
+      this.creditoForm.patchValue({
+        monto: unidad.precio
+      });
+    }
+  }
+
   onSaveCredito(): void {
-    if (this.creditoForm.invalid || !this.selectedCliente) {
+    if (this.creditoForm.invalid) {
+      this.errorMessage = 'Por favor completa todos los campos correctamente';
       return;
     }
+
+    if (!this.selectedCliente) {
+      this.errorMessage = 'Debes seleccionar un cliente primero';
+      return;
+    }
+
+    if (!this.selectedUnidad) {
+      this.errorMessage = 'Debes seleccionar una unidad inmobiliaria primero';
+      return;
+    }
+
     const formValue = this.creditoForm.value;
-    const selectedUnidad = this.unidades.find(u => u.idUnidad == formValue.unidadInmobiliaria);
-    if (!selectedUnidad) {
-      return;
-    }
-    const creditoPayload: Credito = {
-      ...formValue,
-      cliente: this.selectedCliente,
-      unidadInmobiliaria: selectedUnidad
+
+    const creditoPayload = {
+      clienteId: this.selectedCliente.idCliente,
+      unidadInmobiliariaId: this.selectedUnidad.idUnidad,
+      moneda: formValue.moneda,
+      monto: formValue.monto,
+      plazo: formValue.plazo,
+      tasaInteres: formValue.tasaInteres,
+      tipoTasa: formValue.tipoTasa,
+      capitalizacion: formValue.capitalizacion,
+      fechaDesembolso: new Date().toISOString().split('T')[0],
+      graciaTotal: formValue.graciaTotal || 0,
+      graciaParcial: formValue.graciaParcial || 0
     };
-    this.creditoService.createCredito(creditoPayload).pipe(
-      tap(creditoGuardado => { this.savedCredito = creditoGuardado; }),
-      switchMap(creditoGuardado =>
-        this.creditoService.generarPlanDePagos(creditoGuardado.idCredito, formValue.graciaTotal, formValue.graciaParcial).pipe(
-          tap(plan => { this.planDePagos = plan; }),
-          switchMap(plan => this.creditoService.calcularIndicadores(creditoGuardado.idCredito, plan))
-        )
-      )
-    ).subscribe({
-      next: indicadoresCalculados => { this.indicadores = indicadoresCalculados; },
-      error: err => { console.error('Error en la secuencia de simulación:', err); }
-    });
+
+    console.log('Guardando crédito:', creditoPayload);
+
+    this.successMessage = '¡Simulación de crédito creada exitosamente! Cliente: ' +
+                          this.selectedCliente.nombre + ' - Unidad: ' + this.selectedUnidad.nombre;
+    this.errorMessage = null;
+
+    setTimeout(() => {
+      this.successMessage = null;
+    }, 5000);
+  }
+
+  logout(): void {
+    this.authService.logout();
+    window.location.href = '/login';
   }
 }

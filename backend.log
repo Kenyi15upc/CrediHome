@@ -1,0 +1,15 @@
+
+> credi-home@0.0.0 backend
+> ts-node-dev --respawn --transpile-only src/app/backend/server/index.ts
+
+[INFO] 16:32:15 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+✅ Conectado a PostgreSQL
+✅ Verificación de conexión exitosa
+
+╔════════════════════════════════════════════════╗
+║   CrediHome API - Backend Iniciado             ║
+║   Puerto: 8080                                ║
+║   Frontend: http://localhost:4200                     ║
+║   Base de Datos: PostgreSQL (credihome_db)     ║
+╚════════════════════════════════════════════════╝
+      

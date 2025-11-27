@@ -1,8 +1,9 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Cliente } from '../../models/cliente';
 import { AuthService } from '../../services/auth.service';
 import { ClienteService } from '../../services/cliente.service';
+import { UserService } from '../../services/user.service';
 import { CommonModule } from '@angular/common';
 import { DecodedToken} from '../../models/auth';
 
@@ -14,7 +15,9 @@ import { DecodedToken} from '../../models/auth';
   styleUrls: ['./cliente-dashboard.component.css']
 })
 export class ClienteDashboardComponent implements OnInit {
+  activeTab: 'perfil-usuario' | 'mis-datos' | 'simulaciones' = 'perfil-usuario';
 
+  perfilUsuarioForm!: FormGroup;
   clienteForm!: FormGroup;
   cliente: Cliente | null = null;
   currentUser: DecodedToken | null;
@@ -22,21 +25,104 @@ export class ClienteDashboardComponent implements OnInit {
   isEditMode = false;
   errorMessage: string | null = null;
   successMessage: string | null = null;
-  creditoForm!: FormGroup;
-  resultadoSimulacion: any = null;
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private clienteService: ClienteService
+    private clienteService: ClienteService,
+    private userService: UserService
   ) {
     this.currentUser = this.authService.currentUserValue;
   }
 
   ngOnInit(): void {
+    this.initPerfilUsuarioForm();
     this.initForm();
-    this.initCreditoForm();
+    this.loadUserProfile();
     this.loadClienteData();
+  }
+
+  loadUserProfile(): void {
+    if (this.currentUser && this.currentUser.sub) {
+      this.userService.getUserProfile(parseInt(this.currentUser.sub)).subscribe({
+        next: (user) => {
+          this.perfilUsuarioForm.patchValue({
+            nombre: user.nombre || '',
+            apellidos: user.apellidos || '',
+            email: user.email || ''
+          });
+        },
+        error: (err) => console.error('Error al cargar perfil:', err)
+      });
+    }
+  }
+
+  initPerfilUsuarioForm(): void {
+    this.perfilUsuarioForm = this.fb.group({
+      username: [{ value: this.currentUser?.username || '', disabled: true }],
+      nombre: [''],
+      apellidos: [''],
+      email: [''],
+      newPassword: ['', Validators.minLength(8)],
+      confirmPassword: ['']
+    }, {
+      validators: this.passwordMatchValidator
+    });
+  }
+
+  passwordMatchValidator(formGroup: FormGroup): { [key: string]: boolean } | null {
+    const newPassword = formGroup.get('newPassword')?.value;
+    const confirmPassword = formGroup.get('confirmPassword')?.value;
+
+    if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+      formGroup.get('confirmPassword')?.setErrors({ mustMatch: true });
+      return { mustMatch: true };
+    }
+    return null;
+  }
+
+  actualizarPerfilUsuario(): void {
+    if (this.perfilUsuarioForm.invalid) {
+      return;
+    }
+
+    const formValue = this.perfilUsuarioForm.getRawValue();
+
+    if (!this.currentUser || !this.currentUser.sub) {
+      this.errorMessage = 'No se pudo identificar el usuario';
+      return;
+    }
+
+    const updateData: any = {
+      nombre: formValue.nombre,
+      apellidos: formValue.apellidos,
+      email: formValue.email || null
+    };
+
+    if (formValue.newPassword) {
+      updateData.password = formValue.newPassword;
+    }
+
+    this.userService.updateUserProfile(parseInt(this.currentUser.sub), updateData).subscribe({
+      next: () => {
+        this.successMessage = '¡Perfil de usuario actualizado exitosamente!';
+        this.errorMessage = null;
+
+        this.perfilUsuarioForm.patchValue({
+          newPassword: '',
+          confirmPassword: ''
+        });
+
+        setTimeout(() => {
+          this.successMessage = null;
+        }, 5000);
+      },
+      error: (err) => {
+        console.error('Error al actualizar perfil:', err);
+        this.errorMessage = 'Error al actualizar el perfil de usuario';
+        this.successMessage = null;
+      }
+    });
   }
 
   initForm(): void {
@@ -55,16 +141,6 @@ export class ClienteDashboardComponent implements OnInit {
     });
   }
 
-  initCreditoForm(): void {
-    this.creditoForm = this.fb.group({
-      moneda: ['SOLES', Validators.required],
-      monto: [null, [Validators.required, Validators.min(1)]],
-      plazo: [null, [Validators.required, Validators.min(1)]],
-      tasaInteres: [null, [Validators.required, Validators.min(0)]],
-      tipoTasa: ['EFECTIVA', Validators.required],
-      capitalizacion: ['MENSUAL', Validators.required]
-    });
-  }
 
   loadClienteData(): void {
     this.isLoading = true;
@@ -142,7 +218,7 @@ export class ClienteDashboardComponent implements OnInit {
       this.clienteService.createCliente(clienteData).subscribe({
         next: (clienteNuevo) => {
           this.cliente = clienteNuevo;
-          this.isEditMode = true; // Se cambia a modo edición
+          this.isEditMode = true;
           this.successMessage = "¡Tu perfil ha sido creado con éxito!";
           setTimeout(() => this.successMessage = null, 5000);
         },
@@ -154,39 +230,8 @@ export class ClienteDashboardComponent implements OnInit {
     }
   }
 
-  simularCredito(): void {
-    if (this.creditoForm.invalid) {
-      return;
-    }
-
-    const data = this.creditoForm.value;
-
-    // Convertir tasa anual a tasa mensual
-    let tasaMensual = data.tasaInteres / 100;
-
-    if (data.tipoTasa === 'EFECTIVA') {
-      // Convertir tasa efectiva anual a mensual
-      tasaMensual = Math.pow(1 + tasaMensual, 1/12) - 1;
-    } else {
-      // Tasa nominal: dividir entre 12
-      tasaMensual = tasaMensual / 12;
-    }
-
-    // Cálculo de la cuota mensual con el método francés
-    const monto = data.monto;
-    const plazo = data.plazo;
-    const cuotaMensual = monto * (tasaMensual * Math.pow(1 + tasaMensual, plazo)) / (Math.pow(1 + tasaMensual, plazo) - 1);
-
-    const totalPagar = cuotaMensual * plazo;
-    const totalIntereses = totalPagar - monto;
-
-    this.resultadoSimulacion = {
-      cuotaMensual: cuotaMensual,
-      totalPagar: totalPagar,
-      totalIntereses: totalIntereses
-    };
-
-    this.successMessage = '¡Simulación completada! Revisa los resultados abajo.';
-    setTimeout(() => this.successMessage = null, 3000);
+  logout(): void {
+    this.authService.logout();
+    window.location.href = '/login';
   }
 }

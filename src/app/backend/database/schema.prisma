@@ -7,11 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== AUTENTICACIÓN ====================
-
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique @db.VarChar(50)
+  nombre    String?  @db.VarChar(100)
+  apellidos String?  @db.VarChar(100)
   password  String   @db.VarChar(255)
   email     String?  @unique @db.VarChar(100)
   enabled   Boolean  @default(true)
@@ -45,7 +45,6 @@ model UserRole {
   @@map("user_roles")
 }
 
-// ==================== CLIENTES ====================
 
 model Cliente {
   idCliente      Int      @id @default(autoincrement()) @map("id_cliente")
@@ -68,7 +67,6 @@ model Cliente {
   @@map("clientes")
 }
 
-// ==================== ASESORES ====================
 
 model Asesor {
   idAsesor  Int      @id @default(autoincrement()) @map("id_asesor")
@@ -84,7 +82,6 @@ model Asesor {
   @@map("asesores")
 }
 
-// ==================== CRÉDITOS ====================
 
 model Credito {
   idCredito       Int      @id @default(autoincrement()) @map("id_credito")
@@ -110,7 +107,6 @@ model Credito {
   @@map("creditos")
 }
 
-// ==================== PLAN DE PAGOS ====================
 
 model PlanPago {
   id             Int     @id @default(autoincrement())
@@ -131,7 +127,6 @@ model PlanPago {
   @@map("plan_pagos")
 }
 
-// ==================== INDICADORES FINANCIEROS ====================
 
 model IndicadorFinanciero {
   id        Int   @id @default(autoincrement())
@@ -146,7 +141,6 @@ model IndicadorFinanciero {
   @@map("indicadores_financieros")
 }
 
-// ==================== UNIDADES INMOBILIARIAS ====================
 
 model UnidadInmobiliaria {
   idUnidad    Int      @id @default(autoincrement()) @map("id_unidad")
@@ -162,7 +156,6 @@ model UnidadInmobiliaria {
   @@map("unidades_inmobiliarias")
 }
 
-// ==================== AUDITORÍA ====================
 
 model AuditLog {
   id             Int      @id @default(autoincrement())
@@ -183,5 +176,37 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+model ConfiguracionSistema {
+  id                Int      @id @default(autoincrement())
+  monedaPorDefecto  String   @default("PEN") @map("moneda_por_defecto") @db.VarChar(10)
+  tipoTasaDefecto   String   @default("EFECTIVA") @map("tipo_tasa_defecto") @db.VarChar(20)
+  capitalizacionDefecto String @default("MENSUAL") @map("capitalizacion_defecto") @db.VarChar(20)
+  graciaTotalMaxima Int      @default(12) @map("gracia_total_maxima")
+  graciaParcialMaxima Int    @default(24) @map("gracia_parcial_maxima")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  updatedBy         Int?     @map("updated_by")
+
+  @@map("configuracion_sistema")
+}
+
+
+model EntidadFinanciera {
+  id              Int      @id @default(autoincrement())
+  nombre          String   @db.VarChar(150)
+  codigo          String   @unique @db.VarChar(20)
+  activa          Boolean  @default(true)
+  tasaMinima      Float?   @map("tasa_minima") @db.DoublePrecision
+  tasaMaxima      Float?   @map("tasa_maxima") @db.DoublePrecision
+  montoMinimo     Float?   @map("monto_minimo") @db.DoublePrecision
+  montoMaximo     Float?   @map("monto_maximo") @db.DoublePrecision
+  plazoMinimo     Int?     @map("plazo_minimo")
+  plazoMaximo     Int?     @map("plazo_maximo")
+  aceptaBonoTechoPropio Boolean @default(true) @map("acepta_bono_techo_propio")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("entidades_financieras")
 }
 

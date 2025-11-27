@@ -43,6 +43,9 @@ export class RegisterComponent implements OnInit {
   ngOnInit(): void {
     this.registerForm = this.formBuilder.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
+      nombre: ['', Validators.required],
+      apellidos: [''],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', Validators.required],
       role: ['ROLE_CLIENTE', Validators.required]
@@ -74,10 +77,15 @@ export class RegisterComponent implements OnInit {
       return;
     }
 
+    const selectedRole = this.f['role'].value;
+
     const userPayload = {
       username: this.f['username'].value,
+      nombre: this.f['nombre'].value,
+      apellidos: this.f['apellidos'].value || null,
+      email: this.f['email'].value,
       password: this.f['password'].value,
-      email: null
+      role: selectedRole
     };
 
     this.authService.register(userPayload).subscribe({
@@ -85,13 +93,8 @@ export class RegisterComponent implements OnInit {
         this.successMessage = '¡Usuario registrado exitosamente! Ya puedes iniciar sesión.';
         this.registerForm.reset();
         this.submitted = false;
-        // NO redirigir automáticamente, solo mostrar el mensaje
       },
       error: (err) => {
-        console.error('Error en el registro:', err);
-        console.error('Error completo:', JSON.stringify(err, null, 2));
-
-        // Manejar diferentes tipos de errores
         if (err.status === 409) {
           this.errorMessage = 'El nombre de usuario ya existe. Por favor, elige otro.';
         } else if (err.status === 400) {
