@@ -2,6 +2,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Cliente } from '../models/cliente';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +10,10 @@ import { Cliente } from '../models/cliente';
 export class ClienteService {
   private baseUrl = 'http://localhost:8080/api';
 
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService
+  ) { }
 
   /**
    * Obtiene la lista de todos los clientes (para el Asesor).
@@ -32,7 +36,19 @@ export class ClienteService {
    * Endpoint: POST /api/clientes
    */
   createCliente(cliente: any): Observable<Cliente> {
-    return this.http.post<Cliente>(`${this.baseUrl}/clientes`, cliente);
+    const currentUser = this.authService.currentUserValue;
+    const userId = currentUser ? parseInt(currentUser.sub) : null;
+
+    if (!userId) {
+      throw new Error('No se pudo obtener el ID del usuario para crear el cliente.');
+    }
+
+    const payload = {
+      ...cliente,
+      userId: userId
+    };
+
+    return this.http.post<Cliente>(`${this.baseUrl}/clientes`, payload);
   }
 
   /**
