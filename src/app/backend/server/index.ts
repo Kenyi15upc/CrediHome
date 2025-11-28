@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { calcularIndicadores, generarPlanPagos } from '../utils/finance';
 
 dotenv.config();
 
@@ -516,15 +517,6 @@ app.delete('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
 });
 
 // ==================== CRÉDITOS ====================
-// TODO: Implementar endpoints de créditos después de actualizar el schema
-// Los endpoints requeridos son:
-// - POST /CrediHome/credito - Crear crédito
-// - GET /CrediHome/creditos - Listar créditos
-// - GET /CrediHome/credito/:id - Obtener crédito por ID
-// - PUT /CrediHome/credito/:id - Actualizar crédito
-// - POST /CrediHome/:id/plan - Generar plan de pagos (requiere calcularPlanPagosFrances)
-// - POST /CrediHome/:id/indicadores - Calcular indicadores (requiere calcularVAN, TIR, TCEA)
-
 app.post('/api/creditos', async (req: Request, res: Response) => {
   try {
     const {
@@ -541,7 +533,6 @@ app.post('/api/creditos', async (req: Request, res: Response) => {
       graciaParcial
     } = req.body;
 
-    // Validación de datos básicos
     if (!clienteId || !monto || !plazo || !tasaInteres) {
       return res.status(400).json({ message: 'Faltan campos requeridos para crear el crédito.' });
     }
@@ -566,17 +557,58 @@ app.post('/api/creditos', async (req: Request, res: Response) => {
     res.status(201).json(nuevoCredito);
   } catch (error: any) {
     console.error('❌ Error al crear el crédito:', error);
-
-    // Error de clave foránea (ej: clienteId o unidadInmobiliariaId no existen)
     if (error.code === 'P2003') {
       return res.status(404).json({
         message: `No se pudo crear el crédito. El cliente o la unidad inmobiliaria no existen.`,
         field: error.meta?.field_name
       });
     }
-
     res.status(500).json({
       message: 'Error interno del servidor al crear el crédito.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+app.post('/api/creditos/:id/plan', async (req: Request, res: Response) => {
+  try {
+    const creditoId = parseInt(req.params.id);
+    const credito = await prisma.credito.findUnique({ where: { idCredito: creditoId } });
+
+    if (!credito) {
+      return res.status(404).json({ message: 'Crédito no encontrado' });
+    }
+
+    const planPagosData = generarPlanPagos(credito);
+
+    await prisma.planPago.deleteMany({ where: { creditoId: creditoId } });
+    const planGuardado = await prisma.planPago.createMany({
+      data: planPagosData.map(p => ({...p, id: undefined}))
+    });
+    const planLeido = await prisma.planPago.findMany({ where: { creditoId: creditoId } });
+
+    console.log(`✅ Plan de pagos de ${planLeido.length} cuotas guardado para el crédito ${creditoId}`);
+
+    const indicadoresData = calcularIndicadores(credito, planLeido);
+
+    await prisma.indicadorFinanciero.deleteMany({ where: { creditoId: creditoId } });
+    const indicadorGuardado = await prisma.indicadorFinanciero.create({
+      data: {
+        creditoId: creditoId,
+        ...indicadoresData
+      }
+    });
+    console.log(`✅ Indicadores financieros guardados para el crédito ${creditoId}`);
+
+    res.status(201).json({
+      planDePagos: planLeido,
+      indicadores: indicadorGuardado
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error al generar el plan de pagos:', error);
+    res.status(500).json({
+      message: 'Error interno del servidor al generar el plan de pagos.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

@@ -11,7 +11,7 @@ import { UnidadInmobiliariaService } from '../../services/unidad-inmobiliaria.se
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { CommonModule } from '@angular/common';
-import { switchMap, tap } from 'rxjs/operators';
+import { switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-asesor-dashboard',
@@ -26,6 +26,7 @@ export class AsesorDashboardComponent implements OnInit {
   showNuevoClienteForm = false;
   showNuevaUnidadForm = false;
   isLoading = true;
+  isSimulating = false;
 
   clientes: Cliente[] = [];
   unidades: UnidadInmobiliaria[] = [];
@@ -43,7 +44,7 @@ export class AsesorDashboardComponent implements OnInit {
 
   successMessage: string | null = null;
   errorMessage: string | null = null;
-  currencySymbol: string = 'PEN'; // Código de moneda dinámico (PEN o USD)
+  currencySymbol: string = 'PEN';
 
   constructor(
     private fb: FormBuilder,
@@ -67,6 +68,167 @@ export class AsesorDashboardComponent implements OnInit {
 
   get currencyLabel(): string {
     return this.currencySymbol === 'USD' ? '$' : 'S/';
+  }
+
+  initClienteForm(): void {
+    this.clienteForm = this.fb.group({
+      nombre: ['', Validators.required],
+      dni: ['', Validators.required],
+      correo: ['', [Validators.required, Validators.email]],
+      ingresoMensual: [null, Validators.required],
+      gastoMensual: [null, Validators.required],
+      ocupacion: ['', Validators.required]
+    });
+  }
+
+  initUnidadForm(): void {
+    this.unidadForm = this.fb.group({
+      nombre: ['', Validators.required],
+      direccion: ['', Validators.required],
+      precio: [null, [Validators.required, Validators.min(1)]],
+      moneda: ['SOLES', Validators.required],
+      estadoU: [true, Validators.required]
+    });
+  }
+
+  initCreditoForm(): void {
+    this.creditoForm = this.fb.group({
+      monto: [null, [Validators.required, Validators.min(1)]],
+      plazo: [null, [Validators.required, Validators.min(1)]],
+      tasaInteres: [null, [Validators.required, Validators.min(0)]],
+      tipoTasa: ['EFECTIVA', Validators.required],
+      capitalizacion: ['MENSUAL', Validators.required],
+      moneda: ['PEN', Validators.required],
+      graciaTotal: [0, [Validators.required, Validators.min(0)]],
+      graciaParcial: [0, [Validators.required, Validators.min(0)]]
+    });
+
+    this.creditoForm.get('moneda')?.valueChanges.subscribe(moneda => {
+      this.currencySymbol = moneda;
+    });
+  }
+
+  onSaveCredito(): void {
+    if (this.creditoForm.invalid || !this.selectedCliente || !this.selectedUnidad) {
+      this.errorMessage = 'Por favor, completa todos los campos y selecciona un cliente y unidad.';
+      return;
+    }
+
+    this.isSimulating = true;
+    this.errorMessage = null;
+    this.successMessage = null;
+    this.planDePagos = [];
+    this.indicadores = null;
+
+    const formValue = this.creditoForm.value;
+    const creditoPayload: Credito = {
+      idCredito: 0,
+      clienteId: this.selectedCliente.idCliente,
+      unidadInmobiliariaId: this.selectedUnidad.idUnidad,
+      moneda: formValue.moneda,
+      monto: formValue.monto,
+      plazo: formValue.plazo,
+      tasaInteres: formValue.tasaInteres,
+      tipoTasa: formValue.tipoTasa,
+      capitalizacion: formValue.capitalizacion,
+      fechaDesembolso: new Date().toISOString().split('T')[0],
+      graciaTotal: formValue.graciaTotal || 0,
+      graciaParcial: formValue.graciaParcial || 0,
+    };
+
+    this.creditoService.createCredito(creditoPayload).pipe(
+      switchMap(creditoGuardado => {
+        this.savedCredito = creditoGuardado;
+        this.successMessage = `Crédito #${creditoGuardado.idCredito} guardado. Generando plan de pagos...`;
+        return this.creditoService.generarPlanDePagos(creditoGuardado.idCredito, creditoGuardado.graciaTotal, creditoGuardado.graciaParcial);
+      })
+    ).subscribe({
+      next: (resultado: any) => {
+        this.planDePagos = resultado.planDePagos;
+        this.indicadores = resultado.indicadores;
+        this.successMessage = `¡Simulación para el Crédito #${this.savedCredito?.idCredito} generada exitosamente!`;
+        this.isSimulating = false;
+      },
+      error: (err) => {
+        console.error('Error en el proceso de simulación:', err);
+        this.errorMessage = `Error en la simulación: ${err.error?.message || 'Error desconocido'}`;
+        this.isSimulating = false;
+      }
+    });
+  }
+
+  loadClientes(): void {
+    this.clienteService.getClientes().subscribe({
+      next: (data) => this.clientes = data,
+      error: (err) => console.error('Error al cargar clientes:', err)
+    });
+  }
+
+  loadUnidades(): void {
+    this.unidadService.getUnidades().subscribe({
+      next: (data) => this.unidades = data,
+      error: (err) => console.error('Error al cargar unidades inmobiliarias:', err)
+    });
+  }
+
+  toggleNuevoClienteForm(): void {
+    this.showNuevoClienteForm = !this.showNuevoClienteForm;
+    this.clienteForm.reset();
+  }
+
+  toggleNuevaUnidadForm(): void {
+    this.showNuevaUnidadForm = !this.showNuevaUnidadForm;
+    this.unidadForm.reset({ moneda: 'SOLES', estadoU: true });
+  }
+
+  onSaveCliente(): void {
+    if (this.clienteForm.invalid) return;
+
+    this.clienteService.createCliente(this.clienteForm.value).subscribe({
+      next: () => {
+        this.loadClientes();
+        this.toggleNuevoClienteForm();
+      },
+      error: (err) => console.error('Error al guardar cliente:', err)
+    });
+  }
+
+  onSaveUnidad(): void {
+    if (this.unidadForm.invalid) {
+      console.error('Formulario de unidad inválido.');
+      return;
+    }
+    this.unidadService.createUnidad(this.unidadForm.value).subscribe({
+      next: () => {
+        this.loadUnidades();
+        this.toggleNuevaUnidadForm();
+      },
+      error: (err) => console.error('Error al guardar la unidad inmobiliaria:', err)
+    });
+  }
+
+  onSelectCliente(cliente: Cliente): void {
+    this.selectedCliente = cliente;
+    this.planDePagos = [];
+    this.indicadores = null;
+    this.savedCredito = null;
+    this.creditoForm.reset({
+      unidadInmobiliaria: null,
+      moneda: 'PEN',
+      tipoTasa: 'EFECTIVA',
+      capitalizacion: 'MENSUAL',
+      graciaTotal: 0,
+      graciaParcial: 0
+    });
+  }
+
+  onSelectUnidad(unidad: UnidadInmobiliaria): void {
+    this.selectedUnidad = unidad;
+    if (this.creditoForm) {
+      this.creditoForm.patchValue({
+        monto: unidad.precio
+      });
+    }
   }
 
   loadUserProfile(): void {
@@ -149,173 +311,6 @@ export class AsesorDashboardComponent implements OnInit {
       error: (err) => {
         console.error('Error al actualizar perfil:', err);
         this.errorMessage = 'Error al actualizar el perfil';
-        this.successMessage = null;
-      }
-    });
-  }
-
-
-  initClienteForm(): void {
-    this.clienteForm = this.fb.group({
-      nombre: ['', Validators.required],
-      dni: ['', Validators.required],
-      correo: ['', [Validators.required, Validators.email]],
-      ingresoMensual: [null, Validators.required],
-      gastoMensual: [null, Validators.required],
-      ocupacion: ['', Validators.required]
-    });
-  }
-
-  initUnidadForm(): void {
-    this.unidadForm = this.fb.group({
-      nombre: ['', Validators.required],
-      direccion: ['', Validators.required],
-      precio: [null, [Validators.required, Validators.min(1)]],
-      moneda: ['SOLES', Validators.required],
-      estadoU: [true, Validators.required]
-    });
-  }
-
-  initCreditoForm(): void {
-    this.creditoForm = this.fb.group({
-      monto: [null, [Validators.required, Validators.min(1)]],
-      plazo: [null, [Validators.required, Validators.min(1)]],
-      tasaInteres: [null, [Validators.required, Validators.min(0)]],
-      tipoTasa: ['EFECTIVA', Validators.required],
-      capitalizacion: ['MENSUAL', Validators.required],
-      moneda: ['PEN', Validators.required],
-      graciaTotal: [0, [Validators.required, Validators.min(0)]],
-      graciaParcial: [0, [Validators.required, Validators.min(0)]]
-    });
-
-    // Escuchar cambios en el campo moneda
-    this.creditoForm.get('moneda')?.valueChanges.subscribe(moneda => {
-      this.currencySymbol = moneda; // 'USD' o 'PEN'
-    });
-  }
-
-  loadClientes(): void {
-    this.clienteService.getClientes().subscribe({
-      next: (data) => this.clientes = data,
-      error: (err) => console.error('Error al cargar clientes:', err)
-    });
-  }
-
-  loadUnidades(): void {
-    this.unidadService.getUnidades().subscribe({
-      next: (data) => this.unidades = data,
-      error: (err) => console.error('Error al cargar unidades inmobiliarias:', err)
-    });
-  }
-
-  toggleNuevoClienteForm(): void {
-    this.showNuevoClienteForm = !this.showNuevoClienteForm;
-    this.clienteForm.reset();
-  }
-
-  toggleNuevaUnidadForm(): void {
-    this.showNuevaUnidadForm = !this.showNuevaUnidadForm;
-    this.unidadForm.reset({ moneda: 'SOLES', estadoU: true });
-  }
-
-  onSaveCliente(): void {
-    if (this.clienteForm.invalid) return;
-
-    this.clienteService.createCliente(this.clienteForm.value).subscribe({
-      next: () => {
-        this.loadClientes();
-        this.toggleNuevoClienteForm();
-      },
-      error: (err) => console.error('Error al guardar cliente:', err)
-    });
-  }
-
-  onSaveUnidad(): void {
-    if (this.unidadForm.invalid) {
-      console.error('Formulario de unidad inválido.');
-      return;
-    }
-    this.unidadService.createUnidad(this.unidadForm.value).subscribe({
-      next: () => {
-        this.loadUnidades();
-        this.toggleNuevaUnidadForm();
-      },
-      error: (err) => console.error('Error al guardar la unidad inmobiliaria:', err)
-    });
-  }
-
-  onSelectCliente(cliente: Cliente): void {
-    this.selectedCliente = cliente;
-    this.planDePagos = [];
-    this.indicadores = null;
-    this.savedCredito = null;
-    this.creditoForm.reset({
-      unidadInmobiliaria: null,
-      moneda: 'SOLES',
-      tipoTasa: 'EFECTIVA',
-      capitalizacion: 'MENSUAL',
-      graciaTotal: 0,
-      graciaParcial: 0,
-      Bono: 0
-    });
-  }
-
-  onSelectUnidad(unidad: UnidadInmobiliaria): void {
-    this.selectedUnidad = unidad;
-    if (this.creditoForm) {
-      this.creditoForm.patchValue({
-        monto: unidad.precio
-      });
-    }
-  }
-
-  onSaveCredito(): void {
-    if (this.creditoForm.invalid) {
-      this.errorMessage = 'Por favor completa todos los campos correctamente';
-      return;
-    }
-
-    if (!this.selectedCliente) {
-      this.errorMessage = 'Debes seleccionar un cliente primero';
-      return;
-    }
-
-    if (!this.selectedUnidad) {
-      this.errorMessage = 'Debes seleccionar una unidad inmobiliaria primero';
-      return;
-    }
-
-    const formValue = this.creditoForm.value;
-
-    const creditoPayload: Credito = {
-      idCredito: 0, // El backend lo generará
-      clienteId: this.selectedCliente.idCliente,
-      unidadInmobiliariaId: this.selectedUnidad.idUnidad,
-      moneda: formValue.moneda,
-      monto: formValue.monto,
-      plazo: formValue.plazo,
-      tasaInteres: formValue.tasaInteres,
-      tipoTasa: formValue.tipoTasa,
-      capitalizacion: formValue.capitalizacion,
-      fechaDesembolso: new Date().toISOString().split('T')[0],
-      graciaTotal: formValue.graciaTotal || 0,
-      graciaParcial: formValue.graciaParcial || 0,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    console.log('Enviando crédito al backend:', creditoPayload);
-
-    this.creditoService.createCredito(creditoPayload).subscribe({
-      next: (creditoGuardado) => {
-        this.savedCredito = creditoGuardado;
-        this.successMessage = `¡Crédito #${creditoGuardado.idCredito} guardado exitosamente!`;
-        this.errorMessage = null;
-        setTimeout(() => this.successMessage = null, 5000);
-      },
-      error: (err) => {
-        console.error('Error al guardar el crédito:', err);
-        this.errorMessage = `Error al guardar el crédito: ${err.error?.message || 'Error desconocido del servidor'}`;
         this.successMessage = null;
       }
     });
