@@ -220,6 +220,7 @@ export class AsesorDashboardComponent implements OnInit {
 
   onSaveCliente(): void {
     if (this.clienteForm.invalid) return;
+
     this.clienteService.createCliente(this.clienteForm.value).subscribe({
       next: () => {
         this.loadClientes();
@@ -286,7 +287,8 @@ export class AsesorDashboardComponent implements OnInit {
 
     const formValue = this.creditoForm.value;
 
-    const creditoPayload = {
+    const creditoPayload: Credito = {
+      idCredito: 0, // El backend lo generará
       clienteId: this.selectedCliente.idCliente,
       unidadInmobiliariaId: this.selectedUnidad.idUnidad,
       moneda: formValue.moneda,
@@ -297,18 +299,26 @@ export class AsesorDashboardComponent implements OnInit {
       capitalizacion: formValue.capitalizacion,
       fechaDesembolso: new Date().toISOString().split('T')[0],
       graciaTotal: formValue.graciaTotal || 0,
-      graciaParcial: formValue.graciaParcial || 0
+      graciaParcial: formValue.graciaParcial || 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
-    console.log('Guardando crédito:', creditoPayload);
+    console.log('Enviando crédito al backend:', creditoPayload);
 
-    this.successMessage = '¡Simulación de crédito creada exitosamente! Cliente: ' +
-                          this.selectedCliente.nombre + ' - Unidad: ' + this.selectedUnidad.nombre;
-    this.errorMessage = null;
-
-    setTimeout(() => {
-      this.successMessage = null;
-    }, 5000);
+    this.creditoService.createCredito(creditoPayload).subscribe({
+      next: (creditoGuardado) => {
+        this.savedCredito = creditoGuardado;
+        this.successMessage = `¡Crédito #${creditoGuardado.idCredito} guardado exitosamente!`;
+        this.errorMessage = null;
+        setTimeout(() => this.successMessage = null, 5000);
+      },
+      error: (err) => {
+        console.error('Error al guardar el crédito:', err);
+        this.errorMessage = `Error al guardar el crédito: ${err.error?.message || 'Error desconocido del servidor'}`;
+        this.successMessage = null;
+      }
+    });
   }
 
   logout(): void {

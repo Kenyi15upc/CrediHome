@@ -1,7 +1,11 @@
-﻿import {Cliente} from './cliente';
+﻿import { Cliente } from './cliente';
+import { UnidadInmobiliaria } from './unidad-inmobiliaria';
 
 export interface Credito {
   idCredito: number;
+  clienteId: number;
+  unidadInmobiliariaId?: number;
+
   moneda: string;
   monto: number;
   plazo: number;
@@ -9,5 +13,13 @@ export interface Credito {
   tipoTasa: string;
   capitalizacion: string;
   fechaDesembolso: string;
-  cliente: Cliente;
+
+  graciaTotal: number;
+  graciaParcial: number;
+
+  createdAt?: Date;
+  updatedAt?: Date;
+
+  cliente?: Cliente;
+  unidadInmobiliaria?: UnidadInmobiliaria;
 }

@@ -524,6 +524,63 @@ app.delete('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
 // - PUT /CrediHome/credito/:id - Actualizar crédito
 // - POST /CrediHome/:id/plan - Generar plan de pagos (requiere calcularPlanPagosFrances)
 // - POST /CrediHome/:id/indicadores - Calcular indicadores (requiere calcularVAN, TIR, TCEA)
+
+app.post('/api/creditos', async (req: Request, res: Response) => {
+  try {
+    const {
+      clienteId,
+      unidadInmobiliariaId,
+      moneda,
+      monto,
+      plazo,
+      tasaInteres,
+      tipoTasa,
+      capitalizacion,
+      fechaDesembolso,
+      graciaTotal,
+      graciaParcial
+    } = req.body;
+
+    // Validación de datos básicos
+    if (!clienteId || !monto || !plazo || !tasaInteres) {
+      return res.status(400).json({ message: 'Faltan campos requeridos para crear el crédito.' });
+    }
+
+    const nuevoCredito = await prisma.credito.create({
+      data: {
+        clienteId: parseInt(clienteId),
+        unidadInmobiliariaId: unidadInmobiliariaId ? parseInt(unidadInmobiliariaId) : null,
+        moneda,
+        monto: parseFloat(monto),
+        plazo: parseInt(plazo),
+        tasaInteres: parseFloat(tasaInteres),
+        tipoTasa,
+        capitalizacion,
+        fechaDesembolso,
+        graciaTotal: parseInt(graciaTotal) || 0,
+        graciaParcial: parseInt(graciaParcial) || 0
+      }
+    });
+
+    console.log(`✅ Crédito creado con ID: ${nuevoCredito.idCredito}`);
+    res.status(201).json(nuevoCredito);
+  } catch (error: any) {
+    console.error('❌ Error al crear el crédito:', error);
+
+    // Error de clave foránea (ej: clienteId o unidadInmobiliariaId no existen)
+    if (error.code === 'P2003') {
+      return res.status(404).json({
+        message: `No se pudo crear el crédito. El cliente o la unidad inmobiliaria no existen.`,
+        field: error.meta?.field_name
+      });
+    }
+
+    res.status(500).json({
+      message: 'Error interno del servidor al crear el crédito.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 // ==================== FIN CRÉDITOS ====================
 
 // ==================== ENDPOINTS DE CLIENTES ====================
@@ -771,4 +828,3 @@ async function startServer() {
 startServer();
 
 export default app;
-
