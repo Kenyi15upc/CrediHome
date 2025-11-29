@@ -5,12 +5,13 @@ import { switchMap, tap } from 'rxjs/operators';
 import { jwtDecode } from 'jwt-decode';
 import { AuthRequest, AuthResponse, DecodedToken } from '../models/auth';
 import { User } from '../models/user';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private baseUrl = 'http://localhost:8080';
+  private baseUrl = environment.apiUrl; // Estandarizado
   private currentUserSubject: BehaviorSubject<DecodedToken | null>;
   public currentUser: Observable<DecodedToken | null>;
 
@@ -30,7 +31,8 @@ export class AuthService {
   }
 
   login(request: AuthRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/CrediHome/authenticate`, request).pipe(
+    // Estandarizado a /api/authenticate
+    return this.http.post<AuthResponse>(`${this.baseUrl}/authenticate`, request).pipe(
       tap((response) => {
         if (response && response.jwt) {
           this.saveToken(response.jwt);
@@ -57,13 +59,13 @@ export class AuthService {
   register(user: User): Observable<any> {
     const roleId = this.getRoleId(user.role || 'ROLE_CLIENTE');
 
-    return this.http.post<User>(`${this.baseUrl}/api/user`, user).pipe(
+    return this.http.post<User>(`${this.baseUrl}/user`, user).pipe(
       switchMap((createdUser: User) => {
         if (!createdUser || !createdUser.id) {
           throw new Error('El backend no devolvió el usuario creado con su ID.');
         }
         return this.http.post(
-          `${this.baseUrl}/api/save/${createdUser.id}/${roleId}`,
+          `${this.baseUrl}/save/${createdUser.id}/${roleId}`,
           {}
         );
       })
@@ -108,4 +110,3 @@ export class AuthService {
     return !!user && user.roles.includes(role);
   }
 }
-

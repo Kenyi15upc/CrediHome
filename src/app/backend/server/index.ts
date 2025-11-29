@@ -34,7 +34,7 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-app.post('/CrediHome/authenticate', async (req: Request, res: Response) => {
+app.post('/api/authenticate', async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
 
@@ -364,8 +364,7 @@ app.put('/api/user/:userId', async (req: Request, res: Response) => {
 
 // ==================== CRUD UNIDADES INMOBILIARIAS ====================
 
-// GET /CrediHome/unidades - Obtener todas las unidades inmobiliarias
-app.get('/CrediHome/unidades', async (req: Request, res: Response) => {
+app.get('/api/unidades', async (req: Request, res: Response) => {
   try {
     const unidades = await prisma.unidadInmobiliaria.findMany({
       orderBy: {
@@ -396,8 +395,8 @@ app.get('/CrediHome/unidades', async (req: Request, res: Response) => {
   }
 });
 
-// GET /CrediHome/unidades/:id - Obtener una unidad por ID
-app.get('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
+// GET /api/unidades/:id - Obtener una unidad por ID
+app.get('/api/unidades/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const unidad = await prisma.unidadInmobiliaria.findUnique({
@@ -418,8 +417,8 @@ app.get('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /CrediHome/unidades - Crear una nueva unidad inmobiliaria
-app.post('/CrediHome/unidades', async (req: Request, res: Response) => {
+// POST /api/unidades - Crear una nueva unidad inmobiliaria
+app.post('/api/unidades', async (req: Request, res: Response) => {
   try {
     const { nombre, tipo, precio, descripcion, direccion, moneda, estadoU } = req.body;
 
@@ -463,8 +462,8 @@ app.post('/CrediHome/unidades', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /CrediHome/unidades/:id - Actualizar una unidad inmobiliaria
-app.put('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
+// PUT /api/unidades/:id - Actualizar una unidad inmobiliaria
+app.put('/api/unidades/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     const { tipo, precio, descripcion, direccion } = req.body;
@@ -493,8 +492,8 @@ app.put('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /CrediHome/unidades/:id - Eliminar una unidad inmobiliaria
-app.delete('/CrediHome/unidades/:id', async (req: Request, res: Response) => {
+// DELETE /api/unidades/:id - Eliminar una unidad inmobiliaria
+app.delete('/api/unidades/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
 

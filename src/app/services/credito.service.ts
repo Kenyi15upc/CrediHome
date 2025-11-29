@@ -4,12 +4,13 @@ import { Observable } from 'rxjs';
 import { Credito } from '../models/credito';
 import { PlanPago } from '../models/plan-pago';
 import { IndicadorFinanciero } from '../models/indicador-financiero';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CreditoService {
-  private baseUrl = 'http://localhost:8080/api';
+  private baseUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) { }
 
