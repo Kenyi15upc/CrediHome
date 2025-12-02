@@ -132,16 +132,16 @@
             <strong>Ocupación:</strong> {{ cliente.ocupacion || 'No registrada' }}
           </div>
           <div class="col-md-6">
-            <strong>Ingreso Mensual:</strong> {{ cliente.ingresoMensual | currency:'S/ ' }}
+            <strong>Ingreso Mensual:</strong> {{ formatCurrency(cliente.ingresoMensual) }}
           </div>
         </div>
 
         <div class="row mb-3">
           <div class="col-md-6">
-            <strong>Gasto Mensual:</strong> {{ cliente.gastoMensual | currency:'S/ ' }}
+            <strong>Gasto Mensual:</strong> {{ formatCurrency(cliente.gastoMensual) }}
           </div>
           <div class="col-md-6">
-            <strong>Capacidad de Pago:</strong> {{ ((cliente?.ingresoMensual || 0) - (cliente?.gastoMensual || 0)) | currency:'S/ ' }}
+            <strong>Capacidad de Pago:</strong> {{ formatCurrency(((cliente.ingresoMensual || 0) - (cliente.gastoMensual || 0))) }}
           </div>
         </div>
       </div>

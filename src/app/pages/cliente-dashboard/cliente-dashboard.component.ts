@@ -26,6 +26,9 @@ export class ClienteDashboardComponent implements OnInit {
   errorMessage: string | null = null;
   successMessage: string | null = null;
 
+  // Nueva propiedad para símbolo de moneda y configuración de simulación
+  monedaSimbolo: string = 'S/ ';
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -233,5 +236,13 @@ export class ClienteDashboardComponent implements OnInit {
   logout(): void {
     this.authService.logout();
     window.location.href = '/login';
+  }
+
+  // Helper para formatear moneda (puede usarse desde la plantilla)
+  formatCurrency(value: number | null | undefined, moneda?: string): string {
+    const val = value ?? 0;
+    const symbol = (moneda || this.monedaSimbolo) === 'USD' || (moneda === 'US$') ? 'US$ ' : (moneda === 'PEN' || moneda === 'S/ ' ? 'S/ ' : this.monedaSimbolo);
+    // Formateo simple con separador de miles y 2 decimales
+    return symbol + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }

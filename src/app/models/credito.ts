@@ -6,13 +6,13 @@ export interface Credito {
   clienteId: number;
   unidadInmobiliariaId?: number;
 
-  moneda: string;
+  moneda: string;           // 'PEN' | 'USD' (ejemplo)
   monto: number;
-  plazo: number;
-  tasaInteres: number;
-  tipoTasa: string;
-  capitalizacion: string;
-  fechaDesembolso: string;
+  plazo: number;            // en meses
+  tasaInteres: number;      // tasa en porcentaje (ej. 7.5)
+  tipoTasa: string;         // 'EFECTIVA' | 'NOMINAL'
+  capitalizacion: string;   // 'MENSUAL' | 'ANUAL' | etc.
+  fechaDesembolso: string;  // cadena con la fecha (según schema Prisma)
 
   graciaTotal: number;
   graciaParcial: number;
@@ -20,6 +20,11 @@ export interface Credito {
   createdAt?: Date;
   updatedAt?: Date;
 
+  // Relaciones (opcionales en frontend)
   cliente?: Cliente;
   unidadInmobiliaria?: UnidadInmobiliaria;
+
+  // Campos adicionales que el frontend puede recibir del backend
+  planPagos?: any[];           // listado de cuota/plan de pagos (PlanPago)
+  indicadores?: any;           // VAN, TIR, TCEA, etc.
 }
