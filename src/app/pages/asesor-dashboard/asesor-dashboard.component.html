@@ -158,9 +158,23 @@
       <div *ngIf="selectedCliente && selectedUnidad" class="card">
         <div class="card-header bg-primary text-white"><h5>Simulación de Crédito</h5></div>
         <div class="card-body">
-          <div class="row mb-3"><div class="col-md-6"><strong>Cliente:</strong> {{ selectedCliente.nombre }}</div><div class="col-md-6"><strong>Unidad:</strong> {{ selectedUnidad.nombre }}</div></div>
+          <div class="row mb-3">
+            <div class="col-md-6"><strong>Cliente:</strong> {{ selectedCliente.nombre }}</div>
+            <div class="col-md-6"><strong>Unidad:</strong> {{ selectedUnidad.nombre }}</div>
+          </div>
           <hr>
           <form [formGroup]="creditoForm" (ngSubmit)="onSaveCredito()">
+            <div class="row mb-3">
+              <div class="col-12">
+                <label class="form-label">Entidad Financiera</label>
+                <select class="form-select" formControlName="entidadFinancieraCodigo">
+                  <option [ngValue]="null" disabled>-- Seleccione una entidad --</option>
+                  <option *ngFor="let entidad of entidades" [value]="entidad.codigo">
+                    {{ entidad.nombre }}
+                  </option>
+                </select>
+              </div>
+            </div>
             <div class="row mb-3">
               <div class="col-md-4"><label class="form-label">Monto del Préstamo ({{ currencyLabel }})</label><input type="number" class="form-control" formControlName="monto"></div>
               <div class="col-md-4"><label class="form-label">Plazo (meses)</label><input type="number" class="form-control" formControlName="plazo"></div>
@@ -172,11 +186,26 @@
               <div class="col-md-4"><label class="form-label">Moneda</label><select class="form-select" formControlName="moneda"><option value="PEN">Soles (S/)</option><option value="USD">Dólares ($)</option></select></div>
             </div>
             <div class="row mb-3">
-              <div class="col-md-6"><label class="form-label">Gracia Total (meses)</label><input type="number" class="form-control" formControlName="graciaTotal"></div>
-              <div class="col-md-6"><label class="form-label">Gracia Parcial (meses)</label><input type="number" class="form-control" formControlName="graciaParcial"></div>
+              <div class="col-md-6">
+                <label class="form-label">Gracia Total (meses)</label>
+                <input type="number" class="form-control" formControlName="graciaTotal">
+                <div *ngIf="creditoForm.get('graciaTotal')?.invalid && creditoForm.get('graciaTotal')?.touched" class="text-danger mt-1">
+                  <small *ngIf="creditoForm.get('graciaTotal')?.errors?.['max']">
+                    El máximo para {{ selectedEntidad?.nombre }} es {{ selectedEntidad?.graciaTotalMaxima }} meses.
+                  </small>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Gracia Parcial (meses)</label>
+                <input type="number" class="form-control" formControlName="graciaParcial">
+                <div *ngIf="creditoForm.get('graciaParcial')?.invalid && creditoForm.get('graciaParcial')?.touched" class="text-danger mt-1">
+                  <small *ngIf="creditoForm.get('graciaParcial')?.errors?.['max']">
+                    El máximo para {{ selectedEntidad?.nombre }} es {{ selectedEntidad?.graciaParcialMaxima }} meses.
+                  </small>
+                </div>
+              </div>
             </div>
 
-            <!-- SECCIÓN DEL BONO TECHO PROPIO -->
             <div *ngIf="selectedCliente" class="mb-3">
               <div *ngIf="clienteEsElegibleParaBono" class="form-check form-switch p-3 rounded" style="background-color: #e0f2f1;">
                 <input class="form-check-input" type="checkbox" role="switch" id="bonoSwitch" formControlName="aplicarBonoTechoPropio">
@@ -207,7 +236,6 @@
       <div *ngIf="indicadores && planDePagos.length > 0" class="mt-5">
         <h4 class="mb-3">Resultados de la Simulación para Crédito #{{ savedCredito?.idCredito }}</h4>
 
-        <!-- MENSAJE DE BONO APLICADO -->
         <div *ngIf="bonoAplicadoInfo && bonoAplicadoInfo.aplicado" class="alert alert-success d-flex align-items-center">
           <i class="bi bi-gift-fill fs-4 me-3"></i>
           <div>

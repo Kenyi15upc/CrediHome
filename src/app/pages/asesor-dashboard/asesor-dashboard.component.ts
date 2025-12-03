@@ -1,17 +1,20 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Cliente } from '../../models/cliente';
 import { Credito } from '../../models/credito';
 import { IndicadorFinanciero } from '../../models/indicador-financiero';
 import { PlanPago } from '../../models/plan-pago';
 import { UnidadInmobiliaria } from '../../models/unidad-inmobiliaria';
+import { EntidadFinanciera } from '../../models/entidad-financiera';
 import { ClienteService } from '../../services/cliente.service';
 import { CreditoService } from '../../services/credito.service';
 import { UnidadInmobiliariaService } from '../../services/unidad-inmobiliaria.service';
+import { EntidadFinancieraService } from '../../services/entidad-financiera.service';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { CommonModule } from '@angular/common';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-asesor-dashboard',
@@ -20,7 +23,7 @@ import { switchMap } from 'rxjs/operators';
   imports: [CommonModule, ReactiveFormsModule],
   styleUrls: ['./asesor-dashboard.component.css']
 })
-export class AsesorDashboardComponent implements OnInit {
+export class AsesorDashboardComponent implements OnInit, OnDestroy {
   activeTab: 'perfil' | 'clientes' | 'unidades' | 'simulaciones' = 'perfil';
 
   showNuevoClienteForm = false;
@@ -30,8 +33,10 @@ export class AsesorDashboardComponent implements OnInit {
 
   clientes: Cliente[] = [];
   unidades: UnidadInmobiliaria[] = [];
+  entidades: EntidadFinanciera[] = [];
   selectedCliente: Cliente | null = null;
   selectedUnidad: UnidadInmobiliaria | null = null;
+  selectedEntidad: EntidadFinanciera | null = null;
 
   savedCredito: Credito | null = null;
   planDePagos: PlanPago[] = [];
@@ -49,11 +54,14 @@ export class AsesorDashboardComponent implements OnInit {
   errorMessage: string | null = null;
   currencySymbol: string = 'PEN';
 
+  private unsubscribe$ = new Subject<void>();
+
   constructor(
     private fb: FormBuilder,
     private clienteService: ClienteService,
     private creditoService: CreditoService,
     private unidadService: UnidadInmobiliariaService,
+    private entidadService: EntidadFinancieraService,
     private authService: AuthService,
     private userService: UserService
   ) { }
@@ -66,7 +74,13 @@ export class AsesorDashboardComponent implements OnInit {
     this.loadUserProfile();
     this.loadClientes();
     this.loadUnidades();
+    this.loadEntidades();
     this.isLoading = false;
+  }
+
+  ngOnDestroy(): void {
+    this.unsubscribe$.next();
+    this.unsubscribe$.complete();
   }
 
   get currencyLabel(): string {
@@ -96,6 +110,7 @@ export class AsesorDashboardComponent implements OnInit {
 
   initCreditoForm(): void {
     this.creditoForm = this.fb.group({
+      entidadFinancieraCodigo: [null, Validators.required],
       monto: [null, [Validators.required, Validators.min(1)]],
       plazo: [null, [Validators.required, Validators.min(1)]],
       tasaInteres: [null, [Validators.required, Validators.min(0)]],
@@ -104,17 +119,46 @@ export class AsesorDashboardComponent implements OnInit {
       moneda: ['PEN', Validators.required],
       graciaTotal: [0, [Validators.required, Validators.min(0)]],
       graciaParcial: [0, [Validators.required, Validators.min(0)]],
-      aplicarBonoTechoPropio: [false] // Checkbox para el bono
+      aplicarBonoTechoPropio: [false]
     });
 
     this.creditoForm.get('moneda')?.valueChanges.subscribe(moneda => {
       this.currencySymbol = moneda;
     });
+
+    this.creditoForm.get('entidadFinancieraCodigo')?.valueChanges
+      .pipe(takeUntil(this.unsubscribe$))
+      .subscribe(codigo => {
+        this.selectedEntidad = this.entidades.find(e => e.codigo === codigo) || null;
+        this.updateGracePeriodValidators();
+      });
+  }
+
+  loadEntidades(): void {
+    this.entidadService.getEntidades().subscribe({
+      next: (data) => this.entidades = data,
+      error: (err) => console.error('Error al cargar entidades financieras:', err)
+    });
+  }
+
+  updateGracePeriodValidators(): void {
+    const graciaTotalControl = this.creditoForm.get('graciaTotal');
+    const graciaParcialControl = this.creditoForm.get('graciaParcial');
+
+    if (this.selectedEntidad) {
+      graciaTotalControl?.setValidators([Validators.required, Validators.min(0), Validators.max(this.selectedEntidad.graciaTotalMaxima)]);
+      graciaParcialControl?.setValidators([Validators.required, Validators.min(0), Validators.max(this.selectedEntidad.graciaParcialMaxima)]);
+    } else {
+      graciaTotalControl?.setValidators([Validators.required, Validators.min(0)]);
+      graciaParcialControl?.setValidators([Validators.required, Validators.min(0)]);
+    }
+    graciaTotalControl?.updateValueAndValidity();
+    graciaParcialControl?.updateValueAndValidity();
   }
 
   onSaveCredito(): void {
     if (this.creditoForm.invalid || !this.selectedCliente || !this.selectedUnidad) {
-      this.errorMessage = 'Por favor, completa todos los campos y selecciona un cliente y unidad.';
+      this.errorMessage = 'Por favor, completa todos los campos y selecciona un cliente, unidad y entidad financiera.';
       return;
     }
 
@@ -123,13 +167,13 @@ export class AsesorDashboardComponent implements OnInit {
     this.successMessage = null;
     this.planDePagos = [];
     this.indicadores = null;
-    this.bonoAplicadoInfo = null; // Limpiar info del bono anterior
+    this.bonoAplicadoInfo = null;
 
     const formValue = this.creditoForm.value;
-    const creditoPayload: Credito = {
-      idCredito: 0,
+    const creditoPayload: any = {
       clienteId: this.selectedCliente.idCliente,
       unidadInmobiliariaId: this.selectedUnidad.idUnidad,
+      entidadFinancieraCodigo: formValue.entidadFinancieraCodigo,
       moneda: formValue.moneda,
       monto: formValue.monto,
       plazo: formValue.plazo,
@@ -152,7 +196,7 @@ export class AsesorDashboardComponent implements OnInit {
       next: (resultado: any) => {
         this.planDePagos = resultado.planDePagos;
         this.indicadores = resultado.indicadores;
-        this.bonoAplicadoInfo = resultado.bono; // Capturamos la info del bono
+        this.bonoAplicadoInfo = resultado.bono;
 
         if (resultado.bono.aplicado) {
           this.successMessage = `¡Simulación generada! Bono Techo Propio de ${resultado.bono.monto.toLocaleString('es-PE', { style: 'currency', currency: 'PEN' })} aplicado.`;
@@ -229,18 +273,20 @@ export class AsesorDashboardComponent implements OnInit {
     this.savedCredito = null;
     this.bonoAplicadoInfo = null;
 
-    // Verificar si el cliente es elegible para mostrar el checkbox del bono
     this.clienteEsElegibleParaBono = cliente.ingresoMensual != null && cliente.ingresoMensual <= 3715;
 
     this.creditoForm.reset({
-      unidadInmobiliaria: null,
+      entidadFinancieraCodigo: null,
       moneda: 'PEN',
       tipoTasa: 'EFECTIVA',
       capitalizacion: 'MENSUAL',
       graciaTotal: 0,
       graciaParcial: 0,
-      aplicarBonoTechoPropio: false // Resetear el checkbox
+      aplicarBonoTechoPropio: false
     });
+    if (this.selectedUnidad) {
+      this.creditoForm.patchValue({ monto: this.selectedUnidad.precio });
+    }
   }
 
   onSelectUnidad(unidad: UnidadInmobiliaria): void {

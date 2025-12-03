@@ -12,7 +12,7 @@ export interface Credito {
   tasaInteres: number;      // tasa en porcentaje (ej. 7.5)
   tipoTasa: string;         // 'EFECTIVA' | 'NOMINAL'
   capitalizacion: string;   // 'MENSUAL' | 'ANUAL' | etc.
-  fechaDesembolso: string;  // cadena con la fecha (según schema Prisma)
+  fechaDesembolso: string;
 
   graciaTotal: number;
   graciaParcial: number;

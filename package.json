@@ -8,7 +8,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "backend": "ts-node-dev --respawn --transpile-only --project src/app/backend/tsconfig.json src/app/backend/server/index.ts",
+    "backend": "npm run prisma:generate && ts-node-dev --respawn --transpile-only --project src/app/backend/tsconfig.json src/app/backend/server/index.ts",
     "dev:all": "node start-dev.js",
     "backend:start": "node dist/backend/server/index.js",
     "prisma:generate": "prisma generate --schema=./src/app/backend/database/schema.prisma",

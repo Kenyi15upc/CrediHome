@@ -27,8 +27,8 @@ model User {
 }
 
 model Role {
-  id    Int    @id @default(autoincrement())
-  name  String @unique @db.VarChar(50)
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(50)
 
   users UserRole[]
 
@@ -44,7 +44,6 @@ model UserRole {
   @@id([userId, roleId])
   @@map("user_roles")
 }
-
 
 model Cliente {
   idCliente      Int      @id @default(autoincrement()) @map("id_cliente")
@@ -67,7 +66,6 @@ model Cliente {
   @@map("clientes")
 }
 
-
 model Asesor {
   idAsesor  Int      @id @default(autoincrement()) @map("id_asesor")
   userId    Int      @unique @map("user_id")
@@ -82,51 +80,50 @@ model Asesor {
   @@map("asesores")
 }
 
-
 model Credito {
-  idCredito       Int      @id @default(autoincrement()) @map("id_credito")
-  clienteId       Int      @map("cliente_id")
-  moneda          String   @db.VarChar(10)
-  monto           Float    @db.DoublePrecision
-  plazo           Int
-  tasaInteres     Float    @map("tasa_interes") @db.DoublePrecision
-  tipoTasa        String   @map("tipo_tasa") @db.VarChar(50)
-  capitalizacion  String   @db.VarChar(50)
-  fechaDesembolso String   @map("fecha_desembolso") @db.VarChar(50)
-  graciaTotal     Int      @default(0) @map("gracia_total")
-  graciaParcial   Int      @default(0) @map("gracia_parcial")
-  unidadInmobiliariaId Int? @map("unidad_inmobiliaria_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  idCredito               Int      @id @default(autoincrement()) @map("id_credito")
+  clienteId               Int      @map("cliente_id")
+  entidadFinancieraCodigo String   @map("entidad_financiera_codigo") @db.VarChar(20)
+  moneda                  String   @db.VarChar(10)
+  monto                   Float    @db.DoublePrecision
+  plazo                   Int
+  tasaInteres             Float    @map("tasa_interes") @db.DoublePrecision
+  tipoTasa                String   @map("tipo_tasa") @db.VarChar(50)
+  capitalizacion          String   @db.VarChar(50)
+  fechaDesembolso         String   @map("fecha_desembolso") @db.VarChar(50)
+  graciaTotal             Int      @default(0) @map("gracia_total")
+  graciaParcial           Int      @default(0) @map("gracia_parcial")
+  unidadInmobiliariaId    Int?     @map("unidad_inmobiliaria_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
-  cliente           Cliente              @relation(fields: [clienteId], references: [idCliente], onDelete: Cascade)
-  unidadInmobiliaria UnidadInmobiliaria? @relation(fields: [unidadInmobiliariaId], references: [idUnidad], onDelete: SetNull)
-  planPagos         PlanPago[]
-  indicadores       IndicadorFinanciero?
+  cliente            Cliente              @relation(fields: [clienteId], references: [idCliente], onDelete: Cascade)
+  entidadFinanciera  EntidadFinanciera    @relation(fields: [entidadFinancieraCodigo], references: [codigo])
+  unidadInmobiliaria UnidadInmobiliaria?  @relation(fields: [unidadInmobiliariaId], references: [idUnidad], onDelete: SetNull)
+  planPagos          PlanPago[]
+  indicadores        IndicadorFinanciero?
 
   @@map("creditos")
 }
 
-
 model PlanPago {
-  id             Int     @id @default(autoincrement())
-  creditoId      Int     @map("credito_id")
-  numeroCuota    Int     @map("numero_cuota")
-  saldoInicial   Float   @map("saldo_inicial") @db.DoublePrecision
-  interes        Float   @db.DoublePrecision
-  cuota          Float   @db.DoublePrecision
-  amortizacion   Float   @db.DoublePrecision
-  saldoFinal     Float   @map("saldo_final") @db.DoublePrecision
-  flujo          Float   @db.DoublePrecision
-  seguroDesgrav  Float?  @map("seguro_desgrav") @db.DoublePrecision
-  seguroInmueble Float?  @map("seguro_inmueble") @db.DoublePrecision
-  portes         Float?  @db.DoublePrecision
+  id             Int    @id @default(autoincrement())
+  creditoId      Int    @map("credito_id")
+  numeroCuota    Int    @map("numero_cuota")
+  saldoInicial   Float  @map("saldo_inicial") @db.DoublePrecision
+  interes        Float  @db.DoublePrecision
+  cuota          Float  @db.DoublePrecision
+  amortizacion   Float  @db.DoublePrecision
+  saldoFinal     Float  @map("saldo_final") @db.DoublePrecision
+  flujo          Float  @db.DoublePrecision
+  seguroDesgrav  Float? @map("seguro_desgrav") @db.DoublePrecision
+  seguroInmueble Float? @map("seguro_inmueble") @db.DoublePrecision
+  portes         Float? @db.DoublePrecision
 
   credito Credito @relation(fields: [creditoId], references: [idCredito], onDelete: Cascade)
 
   @@map("plan_pagos")
 }
-
 
 model IndicadorFinanciero {
   id        Int   @id @default(autoincrement())
@@ -141,7 +138,6 @@ model IndicadorFinanciero {
   @@map("indicadores_financieros")
 }
 
-
 model UnidadInmobiliaria {
   idUnidad    Int      @id @default(autoincrement()) @map("id_unidad")
   tipo        String   @db.VarChar(50)
@@ -155,7 +151,6 @@ model UnidadInmobiliaria {
 
   @@map("unidades_inmobiliarias")
 }
-
 
 model AuditLog {
   id             Int      @id @default(autoincrement())
@@ -179,34 +174,36 @@ model AuditLog {
 }
 
 model ConfiguracionSistema {
-  id                Int      @id @default(autoincrement())
-  monedaPorDefecto  String   @default("PEN") @map("moneda_por_defecto") @db.VarChar(10)
-  tipoTasaDefecto   String   @default("EFECTIVA") @map("tipo_tasa_defecto") @db.VarChar(20)
-  capitalizacionDefecto String @default("MENSUAL") @map("capitalizacion_defecto") @db.VarChar(20)
-  graciaTotalMaxima Int      @default(12) @map("gracia_total_maxima")
-  graciaParcialMaxima Int    @default(24) @map("gracia_parcial_maxima")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  updatedBy         Int?     @map("updated_by")
+  id                    Int      @id @default(autoincrement())
+  monedaPorDefecto      String   @default("PEN") @map("moneda_por_defecto") @db.VarChar(10)
+  tipoTasaDefecto       String   @default("EFECTIVA") @map("tipo_tasa_defecto") @db.VarChar(20)
+  capitalizacionDefecto String   @default("MENSUAL") @map("capitalizacion_defecto") @db.VarChar(20)
+  graciaTotalMaxima     Int      @default(12) @map("gracia_total_maxima")
+  graciaParcialMaxima   Int      @default(24) @map("gracia_parcial_maxima")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  updatedBy             Int?     @map("updated_by")
 
   @@map("configuracion_sistema")
 }
 
-
 model EntidadFinanciera {
-  id              Int      @id @default(autoincrement())
-  nombre          String   @db.VarChar(150)
-  codigo          String   @unique @db.VarChar(20)
-  activa          Boolean  @default(true)
-  tasaMinima      Float?   @map("tasa_minima") @db.DoublePrecision
-  tasaMaxima      Float?   @map("tasa_maxima") @db.DoublePrecision
-  montoMinimo     Float?   @map("monto_minimo") @db.DoublePrecision
-  montoMaximo     Float?   @map("monto_maximo") @db.DoublePrecision
-  plazoMinimo     Int?     @map("plazo_minimo")
-  plazoMaximo     Int?     @map("plazo_maximo")
-  aceptaBonoTechoPropio Boolean @default(true) @map("acepta_bono_techo_propio")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                    Int      @id @default(autoincrement())
+  nombre                String   @db.VarChar(150)
+  codigo                String   @unique @db.VarChar(20)
+  activa                Boolean  @default(true)
+  tasaMinima            Float?   @map("tasa_minima") @db.DoublePrecision
+  tasaMaxima            Float?   @map("tasa_maxima") @db.DoublePrecision
+  montoMinimo           Float?   @map("monto_minimo") @db.DoublePrecision
+  montoMaximo           Float?   @map("monto_maximo") @db.DoublePrecision
+  plazoMinimo           Int?     @map("plazo_minimo")
+  plazoMaximo           Int?     @map("plazo_maximo")
+  aceptaBonoTechoPropio Boolean  @default(true) @map("acepta_bono_techo_propio")
+  graciaTotalMaxima     Int      @default(6) @map("gracia_total_maxima")
+  graciaParcialMaxima   Int      @default(12) @map("gracia_parcial_maxima")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  creditos Credito[]
 
   @@map("entidades_financieras")
 }
-
