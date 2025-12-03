@@ -37,6 +37,9 @@ export class AsesorDashboardComponent implements OnInit {
   planDePagos: PlanPago[] = [];
   indicadores: IndicadorFinanciero | null = null;
 
+  clienteEsElegibleParaBono = false;
+  bonoAplicadoInfo: { aplicado: boolean, monto: number, mensaje: string } | null = null;
+
   perfilForm!: FormGroup;
   clienteForm!: FormGroup;
   unidadForm!: FormGroup;
@@ -100,7 +103,8 @@ export class AsesorDashboardComponent implements OnInit {
       capitalizacion: ['MENSUAL', Validators.required],
       moneda: ['PEN', Validators.required],
       graciaTotal: [0, [Validators.required, Validators.min(0)]],
-      graciaParcial: [0, [Validators.required, Validators.min(0)]]
+      graciaParcial: [0, [Validators.required, Validators.min(0)]],
+      aplicarBonoTechoPropio: [false] // Checkbox para el bono
     });
 
     this.creditoForm.get('moneda')?.valueChanges.subscribe(moneda => {
@@ -119,6 +123,7 @@ export class AsesorDashboardComponent implements OnInit {
     this.successMessage = null;
     this.planDePagos = [];
     this.indicadores = null;
+    this.bonoAplicadoInfo = null; // Limpiar info del bono anterior
 
     const formValue = this.creditoForm.value;
     const creditoPayload: Credito = {
@@ -140,13 +145,23 @@ export class AsesorDashboardComponent implements OnInit {
       switchMap(creditoGuardado => {
         this.savedCredito = creditoGuardado;
         this.successMessage = `Crédito #${creditoGuardado.idCredito} guardado. Generando plan de pagos...`;
-        return this.creditoService.generarPlanDePagos(creditoGuardado.idCredito, creditoGuardado.graciaTotal, creditoGuardado.graciaParcial);
+        const payload = { aplicarBono: formValue.aplicarBonoTechoPropio };
+        return this.creditoService.generarPlanDePagos(creditoGuardado.idCredito, payload);
       })
     ).subscribe({
       next: (resultado: any) => {
         this.planDePagos = resultado.planDePagos;
         this.indicadores = resultado.indicadores;
-        this.successMessage = `¡Simulación para el Crédito #${this.savedCredito?.idCredito} generada exitosamente!`;
+        this.bonoAplicadoInfo = resultado.bono; // Capturamos la info del bono
+
+        if (resultado.bono.aplicado) {
+          this.successMessage = `¡Simulación generada! Bono Techo Propio de ${resultado.bono.monto.toLocaleString('es-PE', { style: 'currency', currency: 'PEN' })} aplicado.`;
+        } else {
+          this.successMessage = `Simulación generada exitosamente para el Crédito #${this.savedCredito?.idCredito}.`;
+          if (resultado.bono.mensaje) {
+            this.errorMessage = `Aviso sobre el bono: ${resultado.bono.mensaje}`;
+          }
+        }
         this.isSimulating = false;
       },
       error: (err) => {
@@ -212,13 +227,19 @@ export class AsesorDashboardComponent implements OnInit {
     this.planDePagos = [];
     this.indicadores = null;
     this.savedCredito = null;
+    this.bonoAplicadoInfo = null;
+
+    // Verificar si el cliente es elegible para mostrar el checkbox del bono
+    this.clienteEsElegibleParaBono = cliente.ingresoMensual != null && cliente.ingresoMensual <= 3715;
+
     this.creditoForm.reset({
       unidadInmobiliaria: null,
       moneda: 'PEN',
       tipoTasa: 'EFECTIVA',
       capitalizacion: 'MENSUAL',
       graciaTotal: 0,
-      graciaParcial: 0
+      graciaParcial: 0,
+      aplicarBonoTechoPropio: false // Resetear el checkbox
     });
   }
 

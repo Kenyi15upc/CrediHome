@@ -358,10 +358,6 @@ app.put('/api/user/:userId', async (req: Request, res: Response) => {
   }
 });
 
-// ==================== CRUD CLIENTES ====================
-// Los endpoints de clientes están en la sección "ENDPOINTS DE CLIENTES" más abajo
-// usando la ruta /api/clientes
-
 // ==================== CRUD UNIDADES INMOBILIARIAS ====================
 
 app.get('/api/unidades', async (req: Request, res: Response) => {
@@ -395,7 +391,6 @@ app.get('/api/unidades', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/unidades/:id - Obtener una unidad por ID
 app.get('/api/unidades/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -417,12 +412,9 @@ app.get('/api/unidades/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/unidades - Crear una nueva unidad inmobiliaria
 app.post('/api/unidades', async (req: Request, res: Response) => {
   try {
     const { nombre, tipo, precio, descripcion, direccion, moneda, estadoU } = req.body;
-
-    // Aceptar 'nombre' o 'tipo' para compatibilidad
     const tipoUnidad = tipo || nombre;
 
     if (!tipoUnidad || !precio) {
@@ -438,7 +430,6 @@ app.post('/api/unidades', async (req: Request, res: Response) => {
       }
     });
 
-    // Retornar en formato compatible con el frontend
     const response = {
       idUnidad: unidad.idUnidad,
       nombre: unidad.tipo,
@@ -462,7 +453,6 @@ app.post('/api/unidades', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/unidades/:id - Actualizar una unidad inmobiliaria
 app.put('/api/unidades/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -492,7 +482,6 @@ app.put('/api/unidades/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/unidades/:id - Eliminar una unidad inmobiliaria
 app.delete('/api/unidades/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -572,40 +561,101 @@ app.post('/api/creditos', async (req: Request, res: Response) => {
 app.post('/api/creditos/:id/plan', async (req: Request, res: Response) => {
   try {
     const creditoId = parseInt(req.params.id);
+    const { aplicarBono } = req.body;
+
+    console.log(`\n--- Iniciando simulación para Crédito ID: ${creditoId} ---`);
+    console.log(`Intención de aplicar bono recibida: ${aplicarBono}`);
+
     const credito = await prisma.credito.findUnique({ where: { idCredito: creditoId } });
 
     if (!credito) {
       return res.status(404).json({ message: 'Crédito no encontrado' });
     }
 
-    const planPagosData = generarPlanPagos(credito);
+    let bonoAplicadoInfo = { aplicado: false, monto: 0, mensaje: '' };
+    const MONTO_BONO_TECHO_PROPIO = 43312.50;
+    const INGRESO_MAXIMO_BONO = 3715.00;
+    const PRECIO_MIN_MIVIVIENDA = 58800;
+    const PRECIO_MAX_MIVIVIENDA = 419600;
+
+    // Se crea una copia del objeto crédito para la simulación.
+    // Su monto será modificado si el bono aplica.
+    const creditoParaSimulacion = { ...credito };
+
+    if (aplicarBono) {
+      console.log('Evaluando elegibilidad para el bono...');
+      const cliente = await prisma.cliente.findUnique({ where: { idCliente: credito.clienteId } });
+      const unidad = await prisma.unidadInmobiliaria.findUnique({ where: { idUnidad: credito.unidadInmobiliariaId! } });
+
+      if (!cliente || !unidad) {
+        return res.status(404).json({ message: 'No se encontró el cliente o la unidad inmobiliaria para el crédito.' });
+      }
+
+      console.log(`- Ingreso mensual del cliente: S/ ${cliente.ingresoMensual} (Límite: S/ ${INGRESO_MAXIMO_BONO})`);
+      console.log(`- Precio de la unidad: S/ ${unidad.precio} (Rango: S/ ${PRECIO_MIN_MIVIVIENDA} - S/ ${PRECIO_MAX_MIVIVIENDA})`);
+
+      const esIngresoValido = cliente.ingresoMensual && cliente.ingresoMensual <= INGRESO_MAXIMO_BONO;
+      const esPrecioValido = unidad.precio >= PRECIO_MIN_MIVIVIENDA && unidad.precio <= PRECIO_MAX_MIVIVIENDA;
+
+      if (esIngresoValido && esPrecioValido) {
+        const montoOriginal = creditoParaSimulacion.monto;
+        creditoParaSimulacion.monto -= MONTO_BONO_TECHO_PROPIO;
+
+        bonoAplicadoInfo = { aplicado: true, monto: MONTO_BONO_TECHO_PROPIO, mensaje: 'Bono Techo Propio aplicado exitosamente.' };
+
+        console.log(`✅ BONO APLICADO. Monto original: ${montoOriginal}. Monto reducido: ${creditoParaSimulacion.monto}`);
+      } else {
+        // Build a specific message
+        let mensajeFallo = 'El bono no fue aplicado. Razones:';
+        if (!esIngresoValido) {
+          mensajeFallo += ` El ingreso mensual del cliente (S/ ${cliente.ingresoMensual}) excede el límite de S/ ${INGRESO_MAXIMO_BONO}.`;
+        }
+        if (!esPrecioValido) {
+          mensajeFallo += ` El precio de la vivienda (S/ ${unidad.precio}) está fuera del rango permitido (S/ ${PRECIO_MIN_MIVIVIENDA} - S/ ${PRECIO_MAX_MIVIVIENDA}).`;
+        }
+        bonoAplicadoInfo.mensaje = mensajeFallo;
+        console.log(`❌ BONO NO APLICADO. Razón: ${mensajeFallo}`);
+      }
+    } else {
+      console.log('No se solicitó aplicar el bono.');
+    }
+
+    console.log(`Monto final a financiar para la simulación: ${creditoParaSimulacion.monto}`);
+
+    const planPagosData = generarPlanPagos(creditoParaSimulacion);
 
     await prisma.planPago.deleteMany({ where: { creditoId: creditoId } });
-    const planGuardado = await prisma.planPago.createMany({
-      data: planPagosData.map(p => ({...p, id: undefined}))
+    await prisma.planPago.createMany({
+      data: planPagosData.map(p => ({ ...p, id: undefined }))
     });
-    const planLeido = await prisma.planPago.findMany({ where: { creditoId: creditoId } });
+    const planLeido = await prisma.planPago.findMany({ where: { creditoId: creditoId }, orderBy: { numeroCuota: 'asc' } });
 
-    console.log(`✅ Plan de pagos de ${planLeido.length} cuotas guardado para el crédito ${creditoId}`);
+    console.log(`Plan de pagos de ${planLeido.length} cuotas generado y guardado.`);
 
-    const indicadoresData = calcularIndicadores(credito, planLeido);
+    const indicadoresData = calcularIndicadores(creditoParaSimulacion, planLeido);
+    console.log('Indicadores financieros calculados:', indicadoresData);
 
     await prisma.indicadorFinanciero.deleteMany({ where: { creditoId: creditoId } });
     const indicadorGuardado = await prisma.indicadorFinanciero.create({
       data: {
         creditoId: creditoId,
-        ...indicadoresData
+        van: indicadoresData.van,
+        tir: indicadoresData.tir,
+        tcea: indicadoresData.tcea,
+        tasaCosto: indicadoresData.tasaCosto
       }
     });
-    console.log(`✅ Indicadores financieros guardados para el crédito ${creditoId}`);
+    console.log(`Indicadores guardados para crédito ID: ${creditoId}`);
+    console.log('--- Simulación finalizada ---');
 
     res.status(201).json({
       planDePagos: planLeido,
-      indicadores: indicadorGuardado
+      indicadores: indicadorGuardado,
+      bono: bonoAplicadoInfo
     });
 
   } catch (error: any) {
-    console.error('❌ Error al generar el plan de pagos:', error);
+    console.error('❌ Error fatal al generar el plan de pagos:', error);
     res.status(500).json({
       message: 'Error interno del servidor al generar el plan de pagos.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -757,50 +807,6 @@ app.get('/api/clientes', async (req: Request, res: Response) => {
 
 // ==================== FIN ENDPOINTS CLIENTES ====================
 
-// ==================== UNIDADES INMOBILIARIAS ====================
-
-app.get('/api/unidades', async (req: Request, res: Response) => {
-  try {
-    const unidades = await prisma.unidadInmobiliaria.findMany();
-    res.status(200).json(unidades);
-  } catch (error: any) {
-    console.error('Error al listar unidades:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-app.post('/api/unidades', async (req: Request, res: Response) => {
-  try {
-    const { tipo, precio, descripcion, direccion } = req.body;
-
-    if (!tipo || !precio) {
-      return res.status(400).json({ message: 'Tipo y precio son requeridos' });
-    }
-
-    const nuevaUnidad = await prisma.unidadInmobiliaria.create({
-      data: {
-        tipo,
-        precio: parseFloat(precio),
-        descripcion: descripcion || null,
-        direccion: direccion || null
-      }
-    });
-
-    res.status(201).json(nuevaUnidad);
-  } catch (error: any) {
-    console.error('Error al crear unidad:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// ==================== FIN UNIDADES ====================
-
 process.on('SIGINT', async () => {
   console.log('\n🛑 Cerrando conexión a PostgreSQL...');
   await prisma.$disconnect();
@@ -837,8 +843,7 @@ async function startServer() {
 
     if (error.message?.includes('P1001') || error.message?.includes('Can\'t reach database')) {
       console.error('\n📋 El servidor PostgreSQL no está accesible.');
-      console.error('   Verifica que PostgreSQL esté corriendo:');
-      console.error('   brew services start postgresql@16');
+      console.error('   Verifica que PostgreSQL esté corriendo.');
     } else if (error.message?.includes('P1003') || error.message?.includes('does not exist')) {
       console.error('\n📋 La base de datos no existe.');
       console.error('   Crea la base de datos: createdb credihome_db');

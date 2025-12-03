@@ -16,7 +16,7 @@ function convertirTasaMensual(tasaAnual: number, tipoTasa: string, capitalizacio
   if (tipoTasa.toUpperCase() === 'EFECTIVA') {
     return Math.pow(1.0 + tasaDecimal, 1.0 / 12.0) - 1.0;
   } else { // NOMINAL
-    let m = 12; // Por defecto, capitalización mensual
+    let m = 12;
     switch (capitalizacion.toUpperCase()) {
       case 'TRIMESTRAL': m = 4; break;
       case 'SEMESTRAL': m = 2; break;
@@ -34,10 +34,15 @@ export function generarPlanPagos(credito: Credito): PlanPago[] {
   const tasaMensual = convertirTasaMensual(tasaInteres, tipoTasa, capitalizacion);
   let saldoInicial = monto;
 
+  const tasaSeguroDesgravamenMensual = 0.035 / 100; // 0.035% sobre el saldo insoluto
+  const seguroInmuebleAnual = (0.3 / 100) * monto;   // 0.3% anual sobre el valor del inmueble
+  const seguroInmuebleMensual = seguroInmuebleAnual / 12;
+  const portesMensuales = 5.0; // S/ 5.00 fijos por envío de estado de cuenta
+
   // 1. Período de Gracia Total: No se paga nada, los intereses se capitalizan.
   for (let i = 1; i <= graciaTotal; i++) {
     const interes = saldoInicial * tasaMensual;
-    saldoInicial += interes; // El interés se suma al capital
+    saldoInicial += interes;
     plan.push({
       numeroCuota: i,
       saldoInicial: saldoInicial - interes,
@@ -52,9 +57,12 @@ export function generarPlanPagos(credito: Credito): PlanPago[] {
     });
   }
 
-  // 2. Período de Gracia Parcial: Solo se pagan intereses.
+  // 2. Período de Gracia Parcial: Se pagan intereses y costos fijos.
   for (let i = 1; i <= graciaParcial; i++) {
     const interes = saldoInicial * tasaMensual;
+    const seguroDesgrav = saldoInicial * tasaSeguroDesgravamenMensual;
+    const cuotaTotalPagada = interes + seguroDesgrav + seguroInmuebleMensual + portesMensuales;
+
     plan.push({
       numeroCuota: graciaTotal + i,
       saldoInicial,
@@ -62,10 +70,10 @@ export function generarPlanPagos(credito: Credito): PlanPago[] {
       cuota: interes,
       amortizacion: 0,
       saldoFinal: saldoInicial,
-      flujo: -interes,
-      seguroDesgrav: 0,
-      seguroInmueble: 0,
-      portes: 0
+      flujo: -cuotaTotalPagada,
+      seguroDesgrav,
+      seguroInmueble: seguroInmuebleMensual,
+      portes: portesMensuales
     });
   }
 
@@ -79,23 +87,27 @@ export function generarPlanPagos(credito: Credito): PlanPago[] {
       let amortizacion = cuotaFija - interes;
       let saldoFinal = saldoInicial - amortizacion;
 
-      // Ajuste en la última cuota para que el saldo final sea exactamente 0
+      const seguroDesgrav = saldoInicial * tasaSeguroDesgravamenMensual;
+
       if (i === plazoRestante) {
         amortizacion = saldoInicial;
         saldoFinal = 0;
       }
 
+      const cuotaCapitalInteres = amortizacion + interes;
+      const cuotaTotalPagada = cuotaCapitalInteres + seguroDesgrav + seguroInmuebleMensual + portesMensuales;
+
       plan.push({
         numeroCuota: graciaTotal + graciaParcial + i,
         saldoInicial,
         interes,
-        cuota: amortizacion + interes,
+        cuota: cuotaCapitalInteres,
         amortizacion,
         saldoFinal,
-        flujo: -(amortizacion + interes),
-        seguroDesgrav: 0,
-        seguroInmueble: 0,
-        portes: 0
+        flujo: -cuotaTotalPagada,
+        seguroDesgrav,
+        seguroInmueble: seguroInmuebleMensual,
+        portes: portesMensuales
       });
       saldoInicial = saldoFinal;
     }
@@ -107,33 +119,39 @@ export function generarPlanPagos(credito: Credito): PlanPago[] {
 /**
  * Calcula los indicadores financieros VAN, TIR y TCEA.
  * @param credito El objeto del crédito.
- * @param planPagos El plan de pagos generado.
+ * @param planPagos El plan de pagos generado que ya incluye todos los costos.
  * @returns Un objeto con los indicadores financieros.
  */
 export function calcularIndicadores(credito: Credito, planPagos: PlanPago[]) {
-  const { monto, tasaInteres, tipoTasa, capitalizacion } = credito;
+  const { monto } = credito;
 
-  const flujos = [monto, ...planPagos.map(p => -p.cuota)];
+  // Flujo para la TCEA: Incluye el desembolso inicial y TODOS los pagos del cliente (cuota + seguros + portes).
+  const flujosTCEA = [monto, ...planPagos.map(p => p.flujo)];
 
-  // Tasa de descuento mensual (tasa de costo de oportunidad)
+  // Flujo para la TIR: Incluye solo el capital e intereses. Sirve para ver el costo del dinero puro.
+  const flujosTIR = [monto, ...planPagos.map(p => -p.cuota)];
+
+  // Tasa de descuento mensual (tasa de costo de oportunidad del cliente - COK)
   const tasaCostoOportunidadMensual = convertirTasaMensual(9, 'EFECTIVA', 'MENSUAL'); // Asumimos un COK del 9% TEA
 
-  // Calcular VAN
-  const van = flujos.reduce((acc, flujo, t) => {
+  // 1. Calcular VAN: Se usa el flujo real (TCEA) y se descuenta al costo de oportunidad (COK).
+  const van = flujosTCEA.reduce((acc, flujo, t) => {
+    // El flujo inicial (monto) es en t=0, los pagos son en t=1, t=2, ...
     return acc + flujo / Math.pow(1 + tasaCostoOportunidadMensual, t);
   }, 0);
 
-  // Calcular TIR
-  const tirMensual = irr(flujos);
+  // 2. Calcular TIR: Es la tasa que hace el VAN=0 para el flujo de capital e intereses.
+  const tirMensual = irr(flujosTIR);
   const tirAnual = Math.pow(1 + tirMensual, 12) - 1;
 
-  // La TCEA es, en esencia, la TIR anualizada del crédito.
-  const tcea = tirAnual;
+  // 3. Calcular TCEA: Es la TIR del flujo que incluye TODOS los costos.
+  const tceaMensual = irr(flujosTCEA);
+  const tceaAnual = Math.pow(1 + tceaMensual, 12) - 1;
 
   return {
     van,
-    tir: tirAnual * 100, // En porcentaje
-    tcea: tcea * 100, // En porcentaje
-    tasaCosto: 9 // Tasa de costo de oportunidad usada
+    tir: tirAnual * 100,
+    tcea: tceaAnual * 100,
+    tasaCosto: 9
   };
 }

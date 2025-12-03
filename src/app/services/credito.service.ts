@@ -1,9 +1,7 @@
 ﻿import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Credito } from '../models/credito';
-import { PlanPago } from '../models/plan-pago';
-import { IndicadorFinanciero } from '../models/indicador-financiero';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -22,15 +20,13 @@ export class CreditoService {
     return this.http.get<Credito[]>(`${this.baseUrl}/creditos`);
   }
 
-  generarPlanDePagos(creditoId: number, graciaTotal: number, graciaParcial: number): Observable<PlanPago[]> {
-    const params = new HttpParams()
-      .set('graciaTotal', graciaTotal.toString())
-      .set('graciaParcial', graciaParcial.toString());
-
-    return this.http.post<PlanPago[]>(`${this.baseUrl}/creditos/${creditoId}/plan`, null, { params });
-  }
-
-  calcularIndicadores(creditoId: number, plan: PlanPago[]): Observable<IndicadorFinanciero> {
-    return this.http.post<IndicadorFinanciero>(`${this.baseUrl}/creditos/${creditoId}/indicadores`, plan);
+  /**
+   * Genera el plan de pagos y los indicadores para un crédito.
+   * @param creditoId El ID del crédito guardado.
+   * @param payload Un objeto que contiene la bandera para aplicar el bono.
+   * @returns Un observable con la respuesta completa de la simulación.
+   */
+  generarPlanDePagos(creditoId: number, payload: { aplicarBono: boolean }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/creditos/${creditoId}/plan`, payload);
   }
 }

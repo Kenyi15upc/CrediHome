@@ -93,7 +93,7 @@
           <form [formGroup]="clienteForm" (ngSubmit)="onSaveCliente()">
             <div class="row mb-3"><div class="col-md-6"><label for="nombre" class="form-label">Nombre Completo</label><input type="text" id="nombre" class="form-control" formControlName="nombre"></div><div class="col-md-6"><label for="dni" class="form-label">DNI</label><input type="text" id="dni" class="form-control" formControlName="dni"></div></div>
             <div class="row mb-3"><div class="col-md-6"><label for="correo" class="form-label">Correo Electrónico</label><input type="email" id="correo" class="form-control" formControlName="correo"></div><div class="col-md-6"><label for="ocupacion" class="form-label">Ocupación</label><input type="text" id="ocupacion" class="form-control" formControlName="ocupacion"></div></div>
-            <div class="row mb-3"><div class="col-md-6"><label for="ingresoMensual" class="form-label">Ingreso Mensual ({{ currencyLabel }})</label><input type="number" id="ingresoMensual" class="form-control" formControlName="ingresoMensual"></div><div class="col-md-6"><label for="gastoMensual" class="form-label">Gasto Mensual ({{ currencyLabel }})</label><input type="number" id="gastoMensual" class="form-control" formControlName="gastoMensual"></div></div>
+            <div class="row mb-3"><div class="col-md-6"><label for="ingresoMensual" class="form-label">Ingreso Mensual (S/)</label><input type="number" id="ingresoMensual" class="form-control" formControlName="ingresoMensual"></div><div class="col-md-6"><label for="gastoMensual" class="form-label">Gasto Mensual (S/)</label><input type="number" id="gastoMensual" class="form-control" formControlName="gastoMensual"></div></div>
             <button type="submit" class="btn btn-primary" [disabled]="clienteForm.invalid">Guardar Cliente</button>
           </form>
         </div>
@@ -102,10 +102,10 @@
           <table class="table table-hover">
             <thead><tr><th>Nombre</th><th>DNI</th><th>Correo</th><th>Ocupación</th><th>Ingresos</th></tr></thead>
             <tbody>
-              <tr *ngFor="let cliente of clientes" (click)="onSelectCliente(cliente)" [class.table-primary]="cliente === selectedCliente" style="cursor: pointer;">
-                <td>{{ cliente.nombre }}</td><td>{{ cliente.dni }}</td><td>{{ cliente.correo }}</td><td>{{ cliente.ocupacion }}</td><td>{{ cliente.ingresoMensual | currency:'S/ ' }}</td>
-              </tr>
-              <tr *ngIf="!clientes || clientes.length === 0"><td colspan="5" class="text-center text-muted">No hay clientes registrados.</td></tr>
+            <tr *ngFor="let cliente of clientes" (click)="onSelectCliente(cliente)" [class.table-primary]="cliente === selectedCliente" style="cursor: pointer;">
+              <td>{{ cliente.nombre }}</td><td>{{ cliente.dni }}</td><td>{{ cliente.correo }}</td><td>{{ cliente.ocupacion }}</td><td>{{ cliente.ingresoMensual | currency:'S/ ' }}</td>
+            </tr>
+            <tr *ngIf="!clientes || clientes.length === 0"><td colspan="5" class="text-center text-muted">No hay clientes registrados.</td></tr>
             </tbody>
           </table>
         </div>
@@ -115,32 +115,32 @@
 
     <!-- Tab: Unidades -->
     <div *ngIf="activeTab === 'unidades'" class="card mb-4">
-        <div class="card-header bg-success text-white"><h4><i class="bi bi-building"></i> Gestión de Unidades Inmobiliarias</h4></div>
-        <div class="card-body">
-            <button class="btn btn-success mb-3" (click)="toggleNuevaUnidadForm()"><i class="bi bi-house-add-fill"></i> {{ showNuevaUnidadForm ? 'Ocultar Formulario' : 'Registrar Nueva Unidad' }}</button>
-            <div *ngIf="showNuevaUnidadForm" class="card bg-light p-3 mb-4">
-                <h5>Datos de la Nueva Unidad</h5>
-                <form [formGroup]="unidadForm" (ngSubmit)="onSaveUnidad()">
-                    <div class="row mb-3"><div class="col-md-6"><label class="form-label">Nombre/Código</label><input type="text" class="form-control" formControlName="nombre"></div><div class="col-md-6"><label class="form-label">Dirección</label><input type="text" class="form-control" formControlName="direccion"></div></div>
-                    <div class="row mb-3"><div class="col-md-4"><label class="form-label">Precio</label><input type="number" class="form-control" formControlName="precio"></div><div class="col-md-4"><label class="form-label">Moneda</label><select class="form-select" formControlName="moneda"><option value="SOLES">Soles (S/)</option><option value="DOLARES">Dólares ($)</option></select></div><div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" formControlName="estadoU"><option [value]="true">Disponible</option><option [value]="false">No Disponible</option></select></div></div>
-                    <button type="submit" class="btn btn-primary" [disabled]="unidadForm.invalid">Guardar Unidad</button>
-                </form>
-            </div>
-            <h5>Unidades Disponibles</h5>
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead><tr><th>Código</th><th>Dirección</th><th>Precio</th><th>Estado</th></tr></thead>
-                    <tbody>
-                        <tr *ngFor="let unidad of unidades" (click)="onSelectUnidad(unidad)" [class.table-primary]="unidad === selectedUnidad" style="cursor: pointer;">
-                            <td>{{ unidad.nombre }}</td><td>{{ unidad.direccion }}</td><td>{{ unidad.precio | currency:'S/ ' }}</td>
-                            <td><span class="badge" [class.bg-success]="unidad.estadoU" [class.bg-secondary]="!unidad.estadoU">{{ unidad.estadoU ? 'Disponible' : 'No Disponible' }}</span></td>
-                        </tr>
-                        <tr *ngIf="!unidades || unidades.length === 0"><td colspan="4" class="text-center text-muted">No hay unidades registradas.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div *ngIf="selectedUnidad" class="alert alert-info mt-3"><i class="bi bi-check-circle-fill"></i> Unidad seleccionada: <strong>{{ selectedUnidad.nombre }}</strong></div>
+      <div class="card-header bg-success text-white"><h4><i class="bi bi-building"></i> Gestión de Unidades Inmobiliarias</h4></div>
+      <div class="card-body">
+        <button class="btn btn-success mb-3" (click)="toggleNuevaUnidadForm()"><i class="bi bi-house-add-fill"></i> {{ showNuevaUnidadForm ? 'Ocultar Formulario' : 'Registrar Nueva Unidad' }}</button>
+        <div *ngIf="showNuevaUnidadForm" class="card bg-light p-3 mb-4">
+          <h5>Datos de la Nueva Unidad</h5>
+          <form [formGroup]="unidadForm" (ngSubmit)="onSaveUnidad()">
+            <div class="row mb-3"><div class="col-md-6"><label class="form-label">Nombre/Código</label><input type="text" class="form-control" formControlName="nombre"></div><div class="col-md-6"><label class="form-label">Dirección</label><input type="text" class="form-control" formControlName="direccion"></div></div>
+            <div class="row mb-3"><div class="col-md-4"><label class="form-label">Precio</label><input type="number" class="form-control" formControlName="precio"></div><div class="col-md-4"><label class="form-label">Moneda</label><select class="form-select" formControlName="moneda"><option value="SOLES">Soles (S/)</option><option value="DOLARES">Dólares ($)</option></select></div><div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" formControlName="estadoU"><option [value]="true">Disponible</option><option [value]="false">No Disponible</option></select></div></div>
+            <button type="submit" class="btn btn-primary" [disabled]="unidadForm.invalid">Guardar Unidad</button>
+          </form>
         </div>
+        <h5>Unidades Disponibles</h5>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead><tr><th>Código</th><th>Dirección</th><th>Precio</th><th>Estado</th></tr></thead>
+            <tbody>
+            <tr *ngFor="let unidad of unidades" (click)="onSelectUnidad(unidad)" [class.table-primary]="unidad === selectedUnidad" style="cursor: pointer;">
+              <td>{{ unidad.nombre }}</td><td>{{ unidad.direccion }}</td><td>{{ unidad.precio | currency:'S/ ' }}</td>
+              <td><span class="badge" [class.bg-success]="unidad.estadoU" [class.bg-secondary]="!unidad.estadoU">{{ unidad.estadoU ? 'Disponible' : 'No Disponible' }}</span></td>
+            </tr>
+            <tr *ngIf="!unidades || unidades.length === 0"><td colspan="4" class="text-center text-muted">No hay unidades registradas.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div *ngIf="selectedUnidad" class="alert alert-info mt-3"><i class="bi bi-check-circle-fill"></i> Unidad seleccionada: <strong>{{ selectedUnidad.nombre }}</strong></div>
+      </div>
     </div>
 
     <!-- Tab: Simulaciones -->
@@ -172,9 +172,24 @@
               <div class="col-md-4"><label class="form-label">Moneda</label><select class="form-select" formControlName="moneda"><option value="PEN">Soles (S/)</option><option value="USD">Dólares ($)</option></select></div>
             </div>
             <div class="row mb-3">
-                <div class="col-md-6"><label class="form-label">Gracia Total (meses)</label><input type="number" class="form-control" formControlName="graciaTotal"></div>
-                <div class="col-md-6"><label class="form-label">Gracia Parcial (meses)</label><input type="number" class="form-control" formControlName="graciaParcial"></div>
+              <div class="col-md-6"><label class="form-label">Gracia Total (meses)</label><input type="number" class="form-control" formControlName="graciaTotal"></div>
+              <div class="col-md-6"><label class="form-label">Gracia Parcial (meses)</label><input type="number" class="form-control" formControlName="graciaParcial"></div>
             </div>
+
+            <!-- SECCIÓN DEL BONO TECHO PROPIO -->
+            <div *ngIf="selectedCliente" class="mb-3">
+              <div *ngIf="clienteEsElegibleParaBono" class="form-check form-switch p-3 rounded" style="background-color: #e0f2f1;">
+                <input class="form-check-input" type="checkbox" role="switch" id="bonoSwitch" formControlName="aplicarBonoTechoPropio">
+                <label class="form-check-label fw-bold text-success" for="bonoSwitch">
+                  <i class="bi bi-patch-check-fill"></i> Aplicar Bono Techo Propio (S/ 43,312.50)
+                </label>
+                <small class="d-block text-muted">El cliente cumple con el requisito de ingresos.</small>
+              </div>
+              <div *ngIf="!clienteEsElegibleParaBono" class="alert alert-secondary py-2">
+                <i class="bi bi-x-circle"></i> El cliente no es elegible para el Bono Techo Propio (ingreso mensual de {{selectedCliente.ingresoMensual | currency:'S/'}} excede el límite).
+              </div>
+            </div>
+
             <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
             <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
             <div class="d-grid">
@@ -191,6 +206,16 @@
       <!-- SECCIÓN DE RESULTADOS DE LA SIMULACIÓN -->
       <div *ngIf="indicadores && planDePagos.length > 0" class="mt-5">
         <h4 class="mb-3">Resultados de la Simulación para Crédito #{{ savedCredito?.idCredito }}</h4>
+
+        <!-- MENSAJE DE BONO APLICADO -->
+        <div *ngIf="bonoAplicadoInfo && bonoAplicadoInfo.aplicado" class="alert alert-success d-flex align-items-center">
+          <i class="bi bi-gift-fill fs-4 me-3"></i>
+          <div>
+            <h5 class="alert-heading">¡Bono Techo Propio Aplicado!</h5>
+            Se ha reducido el monto a financiar en <strong>{{ bonoAplicadoInfo.monto | currency:'S/':'symbol':'1.2-2' }}</strong>.
+          </div>
+        </div>
+
         <div class="card mb-4">
           <div class="card-header bg-success text-white"><h5><i class="bi bi-graph-up"></i> Indicadores Financieros</h5></div>
           <div class="card-body">
@@ -206,17 +231,17 @@
           <div class="card-body table-responsive">
             <table class="table table-striped table-hover">
               <thead class="table-dark">
-                <tr><th># Cuota</th><th>Saldo Inicial</th><th>Interés</th><th>Amortización</th><th>Cuota</th><th>Saldo Final</th></tr>
+              <tr><th># Cuota</th><th>Saldo Inicial</th><th>Interés</th><th>Amortización</th><th>Cuota</th><th>Saldo Final</th></tr>
               </thead>
               <tbody>
-                <tr *ngFor="let pago of planDePagos">
-                  <td>{{ pago.numeroCuota }}</td>
-                  <td>{{ pago.saldoInicial | currency:currencySymbol:'symbol':'1.2-2' }}</td>
-                  <td>{{ pago.interes | currency:currencySymbol:'symbol':'1.2-2' }}</td>
-                  <td>{{ pago.amortizacion | currency:currencySymbol:'symbol':'1.2-2' }}</td>
-                  <td class="fw-bold">{{ pago.cuota | currency:currencySymbol:'symbol':'1.2-2' }}</td>
-                  <td>{{ pago.saldoFinal | currency:currencySymbol:'symbol':'1.2-2' }}</td>
-                </tr>
+              <tr *ngFor="let pago of planDePagos">
+                <td>{{ pago.numeroCuota }}</td>
+                <td>{{ pago.saldoInicial | currency:currencySymbol:'symbol':'1.2-2' }}</td>
+                <td>{{ pago.interes | currency:currencySymbol:'symbol':'1.2-2' }}</td>
+                <td>{{ pago.amortizacion | currency:currencySymbol:'symbol':'1.2-2' }}</td>
+                <td class="fw-bold">{{ pago.cuota | currency:currencySymbol:'symbol':'1.2-2' }}</td>
+                <td>{{ pago.saldoFinal | currency:currencySymbol:'symbol':'1.2-2' }}</td>
+              </tr>
               </tbody>
             </table>
           </div>
